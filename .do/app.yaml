@@ -4,6 +4,7 @@ region: nyc
 services:
   # WebSocket Server
   - name: websocket-server
+    source_dir: /
     dockerfile_path: server/Dockerfile
     github:
       branch: main

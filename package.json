@@ -15,6 +15,10 @@
   "keywords": ["game", "phaser", "typescript", "achtung-die-kurve", "curve-fever"],
   "author": "",
   "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
   "dependencies": {
     "phaser": "^3.80.1",
     "socket.io-client": "^4.7.5"

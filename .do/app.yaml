@@ -41,7 +41,13 @@ services:
     routes:
       - path: /
     environment_slug: node-js
-    build_command: npm run build
+    build_command: |
+      npm ci --only=production=false
+      npm run build
     envs:
+      - key: NODE_ENV
+        value: production
       - key: VITE_WEBSOCKET_URL
         value: ${websocket-server.PUBLIC_URL}
+      - key: NODE_OPTIONS
+        value: "--max-old-space-size=4096"

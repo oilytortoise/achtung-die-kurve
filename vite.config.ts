@@ -7,11 +7,26 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true
+    sourcemap: true,
+    target: 'esnext',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['phaser'],
+          socket: ['socket.io-client']
+        }
+      }
+    },
+    // Increase chunk size warning limit since Phaser is large
+    chunkSizeWarningLimit: 1000
   },
   resolve: {
     alias: {
       '@': '/src'
     }
+  },
+  // Ensure proper module resolution
+  optimizeDeps: {
+    include: ['phaser', 'socket.io-client']
   }
 })

@@ -4,6 +4,7 @@ import { LobbyManager } from './LobbyManager';
 
 export class UIManager {
     private players: PlayerConfig[] = [];
+    private onlinePlayers: Map<string, { id: string; name: string; color: string }> = new Map();
     private onStartGame?: (players: PlayerConfig[]) => void;
     private onPlayAgain?: () => void;
     private onStartOnlineGame?: () => void;
@@ -158,7 +159,31 @@ export class UIManager {
         if (scoresDiv) {
             scoresDiv.innerHTML = state.scores
                 .map(score => {
-                    const player = this.players.find(p => p.id === score.playerId);
+                    let player;
+                    
+                    if (state.gameMode === 'online') {
+                        // For online games, try to get player from stored online players
+                        player = this.onlinePlayers.get(score.playerId);
+                        
+                        // If not found in stored players, try to get from current lobby
+                        if (!player) {
+                            const lobby = this.lobbyManager.getCurrentLobby();
+                            const lobbyPlayer = lobby?.players.find(p => p.id === score.playerId);
+                            if (lobbyPlayer) {
+                                player = {
+                                    id: lobbyPlayer.id,
+                                    name: lobbyPlayer.name,
+                                    color: lobbyPlayer.color
+                                };
+                                // Store for future use
+                                this.onlinePlayers.set(score.playerId, player);
+                            }
+                        }
+                    } else {
+                        // For local games, use the local players array
+                        player = this.players.find(p => p.id === score.playerId);
+                    }
+                    
                     if (!player) return '';
                     return `
                         <div class="score-item">
@@ -187,7 +212,29 @@ export class UIManager {
             
             finalScoresDiv.innerHTML = sortedScores
                 .map(score => {
-                    const player = this.players.find(p => p.id === score.playerId);
+                    let player;
+                    
+                    if (state.gameMode === 'online') {
+                        // For online games, get player from stored online players
+                        player = this.onlinePlayers.get(score.playerId);
+                        
+                        // If not found in stored players, try to get from current lobby
+                        if (!player) {
+                            const lobby = this.lobbyManager.getCurrentLobby();
+                            const lobbyPlayer = lobby?.players.find(p => p.id === score.playerId);
+                            if (lobbyPlayer) {
+                                player = {
+                                    id: lobbyPlayer.id,
+                                    name: lobbyPlayer.name,
+                                    color: lobbyPlayer.color
+                                };
+                            }
+                        }
+                    } else {
+                        // For local games, use the local players array
+                        player = this.players.find(p => p.id === score.playerId);
+                    }
+                    
                     if (!player) return '';
                     const isWinner = score.playerId === winner.playerId;
                     return `
@@ -468,6 +515,19 @@ export class UIManager {
     }
 
     private handleOnlineGameStarted(): void {
+        // Store online player data for score display
+        const lobby = this.lobbyManager.getCurrentLobby();
+        if (lobby) {
+            lobby.players.forEach(player => {
+                this.onlinePlayers.set(player.id, {
+                    id: player.id,
+                    name: player.name,
+                    color: player.color
+                });
+            });
+            console.log('Stored online player data for UI:', Array.from(this.onlinePlayers.values()));
+        }
+        
         this.showScreen('game-hud');
         if (this.onStartOnlineGame) {
             this.onStartOnlineGame();

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Config Test</title>
+</head>
+<body>
+    <h1>Configuration Test</h1>
+    <div id="results"></div>
+    
+    <!-- Load config.js first -->
+    <script src="/config.js"></script>
+    
+    <script>
+        function displayResults() {
+            const results = document.getElementById('results');
+            results.innerHTML = `
+                <h2>Configuration Values:</h2>
+                <p><strong>window.APP_CONFIG:</strong> ${JSON.stringify(window.APP_CONFIG, null, 2)}</p>
+                <p><strong>WEBSOCKET_URL from APP_CONFIG:</strong> ${window.APP_CONFIG?.WEBSOCKET_URL || 'undefined'}</p>
+                
+                <h2>Vite Environment Variables:</h2>
+                <p><strong>import.meta.env:</strong> ${typeof import !== 'undefined' && import.meta ? JSON.stringify(import.meta.env, null, 2) : 'Not available in this context'}</p>
+                
+                <h2>Environment Detection:</h2>
+                <p><strong>Location:</strong> ${window.location.href}</p>
+                <p><strong>Is Production:</strong> ${window.location.hostname !== 'localhost'}</p>
+            `;
+        }
+        
+        // Wait a moment for config to load, then display results
+        setTimeout(displayResults, 100);
+    </script>
+</body>
+</html>

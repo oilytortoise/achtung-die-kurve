@@ -38,34 +38,13 @@ COPY --from=build /app/dist /usr/share/nginx/html
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Debug: List what's in docker-entrypoint.d and create our script
-RUN ls -la /docker-entrypoint.d/ && \
-    cat > /docker-entrypoint.d/40-inject-config.sh << 'EOF'
-#!/bin/bash
-set -e
-
-echo "[Config Injection] Starting configuration injection..."
-
-# Inject runtime configuration
-if [ -n "$VITE_WEBSOCKET_URL" ]; then
-  echo "[Config Injection] Injecting WEBSOCKET_URL: $VITE_WEBSOCKET_URL"
-  sed -i "s|__VITE_WEBSOCKET_URL__|$VITE_WEBSOCKET_URL|g" /usr/share/nginx/html/config.js
-  echo "[Config Injection] Configuration injection complete"
-else
-  echo "[Config Injection] Warning: VITE_WEBSOCKET_URL not set, using default localhost"
-fi
-
-# Verify the config file was updated
-echo "[Config Injection] Current config.js content:"
-cat /usr/share/nginx/html/config.js
-
-echo "[Config Injection] Configuration injection finished"
-EOF
+# Create the config injection script using printf to avoid heredoc issues
+RUN printf '#!/bin/bash\nset -e\n\necho "[Config Injection] Starting configuration injection..."\n\n# Inject runtime configuration\nif [ -n "$VITE_WEBSOCKET_URL" ]; then\n  echo "[Config Injection] Injecting WEBSOCKET_URL: $VITE_WEBSOCKET_URL"\n  sed -i "s|__VITE_WEBSOCKET_URL__|$VITE_WEBSOCKET_URL|g" /usr/share/nginx/html/config.js\n  echo "[Config Injection] Configuration injection complete"\nelse\n  echo "[Config Injection] Warning: VITE_WEBSOCKET_URL not set, using default localhost"\nfi\n\n# Verify the config file was updated\necho "[Config Injection] Current config.js content:"\ncat /usr/share/nginx/html/config.js\n\necho "[Config Injection] Configuration injection finished"\n' > /docker-entrypoint.d/40-inject-config.sh
 
 # Make it executable and verify it was created
 RUN chmod +x /docker-entrypoint.d/40-inject-config.sh && \
     ls -la /docker-entrypoint.d/40-inject-config.sh && \
-    echo "Script content:" && cat /docker-entrypoint.d/40-inject-config.sh
+    echo "Script exists and is executable"
 
 # The nginx user already exists in nginx:alpine, so we don't need to create it
 

@@ -2,7 +2,48 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { nanoid } from 'nanoid';
 
-const httpServer = createServer();
+// Create HTTP server with basic request handling
+const httpServer = createServer((req, res) => {
+    // Add CORS headers for all requests
+    const allowedOrigins = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ["http://localhost:3000", "http://localhost:5173"];
+    const origin = req.headers.origin;
+    if (allowedOrigins.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    
+    if (req.method === 'OPTIONS') {
+        res.writeHead(200);
+        res.end();
+        return;
+    }
+    
+    // Basic health check endpoint
+    if (req.url === '/' || req.url === '/health') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ 
+            status: 'ok', 
+            server: 'achtung-websocket-server',
+            timestamp: new Date().toISOString(),
+            lobbies: lobbies.size,
+            connectedPlayers: playerSockets.size
+        }));
+        return;
+    }
+    
+    // Handle socket.io.js request for debugging
+    if (req.url.includes('/socket.io/socket.io.js')) {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('Socket.IO client files are served automatically by the Socket.IO server');
+        return;
+    }
+    
+    // Default response for other requests
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('WebSocket server running. Connect via Socket.IO client.');
+});
+
 const io = new Server(httpServer, {
     cors: {
         origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ["http://localhost:3000", "http://localhost:5173"],

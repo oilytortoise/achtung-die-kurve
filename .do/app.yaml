@@ -9,7 +9,7 @@ services:
       branch: main
       deploy_on_push: true
     health_check:
-      http_path: /socket.io/socket.io.js
+      http_path: /
       success_codes:
         - 200
         - 404
@@ -25,7 +25,7 @@ services:
       - key: PORT
         value: "3001"
       - key: CORS_ORIGIN
-        value: "${client.PUBLIC_URL}"
+        value: "https://achtung.jackstevens.tech"
 
   # Static Site (Client) - Docker build only
   - name: client

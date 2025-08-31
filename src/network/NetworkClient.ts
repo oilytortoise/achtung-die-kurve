@@ -7,6 +7,7 @@ import type {
     PlayerInput,
     OnlinePlayer 
 } from '../types';
+import { ENV } from '../config/env';
 
 export class NetworkClient {
     private socket: Socket | null = null;
@@ -28,10 +29,8 @@ export class NetworkClient {
     private readonly serverUrl: string;
 
     constructor(serverUrl?: string) {
-        // Use provided URL, environment variable, or default to localhost for development
-        this.serverUrl = serverUrl || 
-            (import.meta.env.VITE_WEBSOCKET_URL as string) || 
-            'http://localhost:3001';
+        // Use provided URL or environment configuration
+        this.serverUrl = serverUrl || ENV.WEBSOCKET_URL;
         
         console.log('NetworkClient initialized with server URL:', this.serverUrl);
     }

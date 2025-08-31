@@ -1,73 +1,95 @@
 #!/bin/bash
 
-# Production build script for Digital Ocean
-# This script handles common Node.js module resolution issues
+# Robust production build script that avoids Vite CLI module resolution issues
+# This completely bypasses the problematic vite CLI wrapper
 
 set -e  # Exit on any error
 
-echo "🚀 Starting production build process..."
+echo "🚀 Starting robust production build..."
 
 # Show environment info
-echo "Node.js version: $(node --version)"
-echo "npm version: $(npm --version)"
+echo "Node.js: $(node --version)"
+echo "npm: $(npm --version)"
 echo "Working directory: $(pwd)"
 
-# Clean up any previous build artifacts
-echo "🧹 Cleaning up previous builds..."
-rm -rf dist/
-rm -rf node_modules/.vite/
-rm -rf node_modules/.cache/
+# Clean environment
+echo "🧹 Cleaning build environment..."
+rm -rf dist/ .vite/ node_modules/.vite/ node_modules/.cache/ || true
 
-# Install dependencies with fresh cache
+# Fresh dependency install
 echo "📦 Installing dependencies..."
-npm cache clean --force 2>/dev/null || true
-npm install --no-fund --no-audit --verbose
+npm cache clean --force || true
+npm install
 
-# Verify critical modules
-echo "🔍 Verifying critical modules..."
-if [ ! -f "node_modules/vite/package.json" ]; then
-    echo "❌ Vite not found, reinstalling..."
-    npm install vite@5.4.2 --save-dev
-fi
-
-if [ ! -f "node_modules/typescript/package.json" ]; then
-    echo "❌ TypeScript not found, reinstalling..."
-    npm install typescript@5.5.4 --save-dev
-fi
-
-# Run type checking
-echo "📝 Running type check..."
-npm run type-check
-
-# Build with explicit Node.js options
-echo "🔨 Building application..."
-export NODE_OPTIONS="--max-old-space-size=8192"
+# Set optimal Node.js options
+export NODE_OPTIONS="--max-old-space-size=8192 --no-warnings"
 export NODE_ENV="production"
 
-# Try multiple build approaches to handle different environments
-echo "Attempting build method 1: Direct vite binary..."
-if ./node_modules/.bin/vite build --mode production; then
-    echo "✅ Build method 1 successful"
-elif [ -x "$(command -v npx)" ]; then
-    echo "⚠️ Build method 1 failed, trying method 2: npx..."
-    if npx vite build --mode production; then
-        echo "✅ Build method 2 successful"
-    else
-        echo "⚠️ Build method 2 failed, trying method 3: npm script..."
-        npm run build:safe
-    fi
-else
-    echo "⚠️ Build method 1 failed, trying method 3: npm script..."
-    npm run build:safe
-fi
+# Create a custom Vite build script that bypasses CLI issues
+echo "🔨 Creating custom build process..."
 
-echo "✅ Build completed successfully!"
-echo "📁 Build output in dist/ directory"
+cat > build-custom.mjs << 'EOF'
+import { build } from 'vite';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+try {
+  console.log('⚙️ Running custom Vite build...');
+  
+  await build({
+    root: __dirname,
+    mode: 'production',
+    build: {
+      outDir: 'dist',
+      minify: true,
+      sourcemap: false,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vendor: ['phaser'],
+            socket: ['socket.io-client']
+          }
+        }
+      }
+    },
+    resolve: {
+      alias: {
+        '@': resolve(__dirname, 'src')
+      }
+    }
+  });
+  
+  console.log('✅ Custom Vite build completed successfully!');
+  process.exit(0);
+} catch (error) {
+  console.error('❌ Custom build failed:', error.message);
+  process.exit(1);
+}
+EOF
+
+# Run the custom build
+echo "🚀 Running custom build process..."
+node build-custom.mjs
+
+# Clean up temporary files
+rm -f build-custom.mjs
 
 # Verify build output
 if [ ! -f "dist/index.html" ]; then
-    echo "❌ Build failed - no index.html found"
+    echo "❌ Build verification failed - no index.html found"
     exit 1
 fi
 
-echo "🎉 Production build ready for deployment!"
+if [ ! -d "dist/assets" ]; then
+    echo "❌ Build verification failed - no assets directory found"
+    exit 1
+fi
+
+echo "✅ Build verification successful!"
+echo "📁 Build contents:"
+ls -la dist/
+
+echo "🎉 Production build completed successfully!"

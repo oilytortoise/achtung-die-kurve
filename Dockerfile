@@ -38,12 +38,13 @@ COPY --from=build /app/dist /usr/share/nginx/html
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy the docker entrypoint script
-COPY scripts/docker-entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# Copy the docker entrypoint script to nginx's entrypoint directory
+COPY scripts/docker-entrypoint.sh /docker-entrypoint.d/40-inject-config.sh
+RUN chmod +x /docker-entrypoint.d/40-inject-config.sh
 
 # The nginx user already exists in nginx:alpine, so we don't need to create it
 
 EXPOSE 80
 
-CMD ["/entrypoint.sh"]
+# Use nginx's default CMD which will run our script in /docker-entrypoint.d/
+CMD ["nginx", "-g", "daemon off;"]

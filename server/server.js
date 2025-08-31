@@ -32,6 +32,18 @@ const DEFAULT_KEY_BINDINGS = [
     { left: 'KeyZ', right: 'KeyX' }
 ];
 
+// Player colors (matches client-side DEFAULT_PLAYER_COLORS)
+const DEFAULT_PLAYER_COLORS = [
+    '#ff0000', // Red
+    '#0000ff', // Blue
+    '#00ff00', // Green
+    '#ffff00', // Yellow
+    '#ff00ff', // Magenta
+    '#00ffff', // Cyan
+    '#ff8000', // Orange
+    '#8000ff'  // Purple
+];
+
 class Lobby {
     constructor(hostSocketId) {
         this.id = generateLobbyCode();
@@ -50,6 +62,8 @@ class Lobby {
         this.gameLoop = null;
         this.gameStartTime = 0;
         this.tickCount = 0;
+        this.countdownTimer = null;
+        this.countdownValue = 0;
     }
 
     addPlayer(socketId, playerData) {
@@ -57,15 +71,16 @@ class Lobby {
             return { success: false, error: 'Lobby is full' };
         }
 
-        // Assign key bindings based on player index (order joined)
+        // Assign key bindings and color based on player index (order joined)
         const playerIndex = this.players.size;
         const keyBinding = DEFAULT_KEY_BINDINGS[playerIndex] || DEFAULT_KEY_BINDINGS[0];
+        const assignedColor = DEFAULT_PLAYER_COLORS[playerIndex] || DEFAULT_PLAYER_COLORS[0];
 
         const player = {
             id: playerData.id || nanoid(8),
             socketId,
             name: playerData.name,
-            color: playerData.color,
+            color: assignedColor, // Use server-assigned color to ensure uniqueness
             isReady: false,
             isHost: socketId === this.hostSocketId,
             leftKey: keyBinding.left,
@@ -78,9 +93,20 @@ class Lobby {
                 left: false,
                 right: false
             },
-            lastInputTime: 0
+            lastInputTime: 0,
+            // Gap handling properties
+            gapTimer: 0,
+            baseGapInterval: 80, // Base frames between gaps
+            gapInterval: 80, // Current gap interval (will be randomized)
+            inGap: false,
+            baseGapDuration: 15, // Base frames during gap
+            gapDuration: 15, // Current gap duration (will be randomized)
+            gapVariancePercent: 0.3 // 30% variance in gap timing
         };
 
+        // Initialize with randomized gap timings
+        this.randomizePlayerGapTimings(player);
+        
         this.players.set(socketId, player);
         this.gameState.scores.set(player.id, { playerId: player.id, rounds: 0 });
 
@@ -151,6 +177,9 @@ class Lobby {
             player.rotation = faceAngle;
             player.alive = true;
             player.trailPoints = [];
+            // Reset gap properties
+            player.gapTimer = 0;
+            player.inGap = false;
         });
     }
 
@@ -187,8 +216,25 @@ class Lobby {
             player.position.x = newX;
             player.position.y = newY;
 
-            // Add trail point every 2 pixels
-            if (this.tickCount % 2 === 0) {
+            // Handle gaps in trail
+            player.gapTimer++;
+            if (player.gapTimer >= player.gapInterval && !player.inGap) {
+                player.inGap = true;
+                player.gapTimer = 0;
+            }
+            
+            if (player.inGap) {
+                player.gapTimer++;
+                if (player.gapTimer >= player.gapDuration) {
+                    player.inGap = false;
+                    player.gapTimer = 0;
+                    // Randomize gap timings for next cycle
+                    this.randomizePlayerGapTimings(player);
+                }
+            }
+
+            // Add trail point every 2 pixels (only when not in gap)
+            if (this.tickCount % 2 === 0 && !player.inGap) {
                 player.trailPoints.push({ x: newX, y: newY });
             }
         }
@@ -270,23 +316,65 @@ class Lobby {
             this.gameState.phase = 'gameOver';
             this.stopGameLoop();
         } else {
-            // Start next round after delay
+            // Increment round but don't auto-start - wait for host to start next round
             this.gameState.currentRound++;
-            setTimeout(() => {
-                if (this.gameState.phase === 'roundOver') {
-                    this.gameState.phase = 'playing';
-                    this.spawnPlayers();
-                }
-            }, 3000);
+            this.gameState.phase = 'waitingForNextRound';
         }
 
         this.broadcastGameState();
+    }
+
+    canStartNextRound() {
+        return this.gameState.phase === 'waitingForNextRound';
+    }
+
+    startNextRound() {
+        if (!this.canStartNextRound()) return false;
+
+        // Start countdown
+        this.gameState.phase = 'countdown';
+        this.countdownValue = 3;
+        this.broadcastGameState();
+
+        // Countdown timer
+        this.countdownTimer = setInterval(() => {
+            this.countdownValue--;
+            
+            if (this.countdownValue > 0) {
+                // Continue countdown
+                this.broadcastCountdown(this.countdownValue);
+            } else {
+                // Countdown finished, start round
+                clearInterval(this.countdownTimer);
+                this.countdownTimer = null;
+                this.gameState.phase = 'playing';
+                this.spawnPlayers();
+                this.broadcastGameState();
+                
+                // Restart game loop if not running
+                if (!this.gameLoop) {
+                    this.gameLoop = setInterval(() => {
+                        this.updateGame();
+                    }, 1000 / GAME_TICK_RATE);
+                }
+            }
+        }, 1000); // 1 second intervals
+
+        return true;
+    }
+
+    broadcastCountdown(count) {
+        io.to(this.id).emit('countdownUpdate', { count });
     }
 
     stopGameLoop() {
         if (this.gameLoop) {
             clearInterval(this.gameLoop);
             this.gameLoop = null;
+        }
+        if (this.countdownTimer) {
+            clearInterval(this.countdownTimer);
+            this.countdownTimer = null;
         }
     }
 
@@ -323,6 +411,30 @@ class Lobby {
             player.inputs = inputData.inputs;
             player.lastInputTime = Date.now();
         }
+    }
+
+    /**
+     * Randomizes the gap interval and duration for a player
+     * Creates unique timing patterns for each player
+     */
+    randomizePlayerGapTimings(player) {
+        // Randomize gap interval (time between gaps)
+        const intervalVariance = player.baseGapInterval * player.gapVariancePercent;
+        const intervalMin = player.baseGapInterval - intervalVariance;
+        const intervalMax = player.baseGapInterval + intervalVariance;
+        player.gapInterval = Math.round(intervalMin + Math.random() * (intervalMax - intervalMin));
+        
+        // Randomize gap duration (how long gaps last) - smaller variance to keep gaps visible
+        const durationVariance = player.baseGapDuration * (player.gapVariancePercent * 0.5); // Half the variance of interval
+        const durationMin = player.baseGapDuration - durationVariance;
+        const durationMax = player.baseGapDuration + durationVariance;
+        player.gapDuration = Math.round(durationMin + Math.random() * (durationMax - durationMin));
+        
+        // Ensure minimum values
+        player.gapInterval = Math.max(player.gapInterval, Math.round(player.baseGapInterval * 0.5));
+        player.gapDuration = Math.max(player.gapDuration, Math.round(player.baseGapDuration * 0.5));
+        
+        console.log(`[Server] ${player.name} gap timings: interval=${player.gapInterval}, duration=${player.gapDuration}`);
     }
 
     getPublicData() {
@@ -461,6 +573,26 @@ io.on('connection', (socket) => {
             }
         } catch (error) {
             console.error('Error starting game:', error);
+        }
+    });
+
+    socket.on('startNextRound', () => {
+        try {
+            for (const lobby of lobbies.values()) {
+                if (lobby.players.has(socket.id)) {
+                    const player = lobby.players.get(socket.id);
+                    
+                    // Only host can start next round
+                    if (player.isHost && lobby.canStartNextRound()) {
+                        if (lobby.startNextRound()) {
+                            console.log(`Next round started in lobby ${lobby.id}`);
+                        }
+                    }
+                    break;
+                }
+            }
+        } catch (error) {
+            console.error('Error starting next round:', error);
         }
     });
 

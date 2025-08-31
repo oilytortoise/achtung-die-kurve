@@ -21,10 +21,13 @@ export class Player {
     private leftPressed: boolean = false;
     private rightPressed: boolean = false;
     private gapTimer: number = 0;
-    private gapInterval: number = 80; // Increased for better timing
+    private baseGapInterval: number = 80; // Base interval for gaps
+    private gapInterval: number = 80; // Current gap interval (randomized)
     private inGap: boolean = false;
-    private gapDuration: number = 15; // Increased for more visible gaps
+    private baseGapDuration: number = 15; // Base duration for gaps
+    private gapDuration: number = 15; // Current gap duration (randomized)
     private colorNumber: number;
+    private gapVariancePercent: number = 0.3; // 30% variance in gap timing
 
     constructor(scene: Phaser.Scene, config: PlayerConfig) {
         this.scene = scene;
@@ -45,6 +48,9 @@ export class Player {
         console.log(`Player ${this.name} trail created with color:`, this.colorNumber);
         
         this.setupInputHandlers();
+        
+        // Initialize with randomized gap timings
+        this.randomizeGapTimings();
     }
 
     private setupInputHandlers(): void {
@@ -123,7 +129,9 @@ export class Player {
             if (this.gapTimer >= this.gapDuration) {
                 this.inGap = false;
                 this.gapTimer = 0;
-                console.log(`${this.name} exiting gap`);
+                // Randomize gap timings for next cycle
+                this.randomizeGapTimings();
+                console.log(`${this.name} exiting gap - next gap in ${this.gapInterval} frames`);
             }
         }
 
@@ -173,6 +181,30 @@ export class Player {
     public die(): void {
         this.alive = false;
         // Add death effect or animation here if desired
+    }
+
+    /**
+     * Randomizes the gap interval and duration for this player
+     * Creates unique timing patterns for each player
+     */
+    private randomizeGapTimings(): void {
+        // Randomize gap interval (time between gaps)
+        const intervalVariance = this.baseGapInterval * this.gapVariancePercent;
+        const intervalMin = this.baseGapInterval - intervalVariance;
+        const intervalMax = this.baseGapInterval + intervalVariance;
+        this.gapInterval = Math.round(intervalMin + Math.random() * (intervalMax - intervalMin));
+        
+        // Randomize gap duration (how long gaps last) - smaller variance to keep gaps visible
+        const durationVariance = this.baseGapDuration * (this.gapVariancePercent * 0.5); // Half the variance of interval
+        const durationMin = this.baseGapDuration - durationVariance;
+        const durationMax = this.baseGapDuration + durationVariance;
+        this.gapDuration = Math.round(durationMin + Math.random() * (durationMax - durationMin));
+        
+        // Ensure minimum values
+        this.gapInterval = Math.max(this.gapInterval, Math.round(this.baseGapInterval * 0.5));
+        this.gapDuration = Math.max(this.gapDuration, Math.round(this.baseGapDuration * 0.5));
+        
+        console.log(`${this.name} gap timings: interval=${this.gapInterval}, duration=${this.gapDuration}`);
     }
 
     public destroy(): void {

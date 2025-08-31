@@ -96,11 +96,17 @@ class Lobby {
             lastInputTime: 0,
             // Gap handling properties
             gapTimer: 0,
-            gapInterval: 80, // Frames between gaps
+            baseGapInterval: 80, // Base frames between gaps
+            gapInterval: 80, // Current gap interval (will be randomized)
             inGap: false,
-            gapDuration: 15 // Frames during gap
+            baseGapDuration: 15, // Base frames during gap
+            gapDuration: 15, // Current gap duration (will be randomized)
+            gapVariancePercent: 0.3 // 30% variance in gap timing
         };
 
+        // Initialize with randomized gap timings
+        this.randomizePlayerGapTimings(player);
+        
         this.players.set(socketId, player);
         this.gameState.scores.set(player.id, { playerId: player.id, rounds: 0 });
 
@@ -222,6 +228,8 @@ class Lobby {
                 if (player.gapTimer >= player.gapDuration) {
                     player.inGap = false;
                     player.gapTimer = 0;
+                    // Randomize gap timings for next cycle
+                    this.randomizePlayerGapTimings(player);
                 }
             }
 
@@ -403,6 +411,30 @@ class Lobby {
             player.inputs = inputData.inputs;
             player.lastInputTime = Date.now();
         }
+    }
+
+    /**
+     * Randomizes the gap interval and duration for a player
+     * Creates unique timing patterns for each player
+     */
+    randomizePlayerGapTimings(player) {
+        // Randomize gap interval (time between gaps)
+        const intervalVariance = player.baseGapInterval * player.gapVariancePercent;
+        const intervalMin = player.baseGapInterval - intervalVariance;
+        const intervalMax = player.baseGapInterval + intervalVariance;
+        player.gapInterval = Math.round(intervalMin + Math.random() * (intervalMax - intervalMin));
+        
+        // Randomize gap duration (how long gaps last) - smaller variance to keep gaps visible
+        const durationVariance = player.baseGapDuration * (player.gapVariancePercent * 0.5); // Half the variance of interval
+        const durationMin = player.baseGapDuration - durationVariance;
+        const durationMax = player.baseGapDuration + durationVariance;
+        player.gapDuration = Math.round(durationMin + Math.random() * (durationMax - durationMin));
+        
+        // Ensure minimum values
+        player.gapInterval = Math.max(player.gapInterval, Math.round(player.baseGapInterval * 0.5));
+        player.gapDuration = Math.max(player.gapDuration, Math.round(player.baseGapDuration * 0.5));
+        
+        console.log(`[Server] ${player.name} gap timings: interval=${player.gapInterval}, duration=${player.gapDuration}`);
     }
 
     getPublicData() {

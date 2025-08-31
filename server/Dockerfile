@@ -4,13 +4,13 @@ FROM node:lts-alpine
 WORKDIR /app
 
 # Copy package files
-COPY server/package*.json ./
+COPY package*.json ./
 
 # Install dependencies
 RUN npm ci --only=production
 
 # Copy server code
-COPY server/server.js ./
+COPY server.js ./
 
 # Create logs directory
 RUN mkdir -p logs

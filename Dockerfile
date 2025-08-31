@@ -38,22 +38,13 @@ COPY --from=build /app/dist /usr/share/nginx/html
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Create a template config file that nginx can substitute
-RUN mv /usr/share/nginx/html/config.js /usr/share/nginx/html/config.js.template
-
-# Set up environment variable for nginx envsubst
-ENV NGINX_ENVSUBST_OUTPUT_DIR=/usr/share/nginx/html
-ENV NGINX_ENVSUBST_TEMPLATE_DIR=/usr/share/nginx/html
-ENV NGINX_ENVSUBST_TEMPLATE_SUFFIX=.template
-ENV NGINX_ENVSUBST_FILTER_FILES=config.js
-# Tell nginx which variables to substitute
-ENV DOLLAR='$'
-# Add debug output
-RUN echo "VITE_WEBSOCKET_URL will be substituted in templates"
+# Copy and setup entrypoint script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 # The nginx user already exists in nginx:alpine, so we don't need to create it
 
 EXPOSE 80
 
-# Use nginx's default CMD which will run our script in /docker-entrypoint.d/
-CMD ["nginx", "-g", "daemon off;"]
+# Use our custom entrypoint script
+CMD ["/docker-entrypoint.sh"]

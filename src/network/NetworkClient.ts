@@ -35,19 +35,25 @@ export class NetworkClient {
         // Override any template literals that might have slipped through
         if (finalUrl.includes('${') || finalUrl.includes('__VITE_')) {
             console.warn('Detected unresolved template in WebSocket URL:', finalUrl);
-            // Fallback to runtime config or hardcoded production URL
-            if (typeof window !== 'undefined' && (window as any).APP_CONFIG?.WEBSOCKET_URL) {
+            // Fallback to runtime config or production URL based on environment
+            if (typeof window !== 'undefined' && (window as any).APP_CONFIG?.WEBSOCKET_URL && !(window as any).APP_CONFIG.WEBSOCKET_URL.includes('__VITE_')) {
                 finalUrl = (window as any).APP_CONFIG.WEBSOCKET_URL;
                 console.log('Using window.APP_CONFIG fallback:', finalUrl);
-            } else if (window.location.hostname !== 'localhost') {
-                // Production fallback - construct from current location
-                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            } else if (typeof window !== 'undefined' && (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1')) {
+                // Production environment - construct websocket URL for Digital Ocean
+                const isHttps = window.location.protocol === 'https:';
+                const protocol = isHttps ? 'wss:' : 'ws:';
                 const hostname = window.location.hostname;
+                
+                // For Digital Ocean Apps, the websocket server should be accessible
+                // either on the same domain or via a specific subdomain
+                // Based on your app.yaml, websockets are routed through /socket.io path
                 finalUrl = `${protocol}//${hostname}`;
-                console.log('Using location-based fallback:', finalUrl);
+                console.log('Using Digital Ocean production fallback:', finalUrl);
+                console.log('Note: WebSocket server should be accessible via /socket.io route');
             } else {
                 finalUrl = 'http://localhost:3001';
-                console.log('Using localhost fallback:', finalUrl);
+                console.log('Using localhost fallback for development:', finalUrl);
             }
         }
         

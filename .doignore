@@ -1,0 +1,23 @@
+# Digital Ocean ignore file
+# Prevent auto-detection of Node.js builds
+
+# Build scripts that might confuse auto-detection
+scripts/build-production.sh
+scripts/build-simple.sh  
+scripts/build-esbuild.sh
+
+# Node.js specific files that trigger auto-detection
+package-lock.json
+
+# Development files
+.env
+.env.local
+.vscode/
+.idea/
+*.log
+
+# Build outputs that might interfere
+dist/
+build/
+node_modules/.cache/
+.vite/

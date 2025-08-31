@@ -1,0 +1,2 @@
+# Disable automatic buildpack detection
+# Force Docker-only builds for this project

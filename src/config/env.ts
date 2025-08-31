@@ -54,11 +54,12 @@ export function getEnvVar(key: keyof typeof ENV, fallback?: string): string {
   return fallback || '';
 }
 
-// Log environment info in development
-if (ENV.IS_DEV) {
-  console.log('Environment Configuration:', {
-    WEBSOCKET_URL: ENV.WEBSOCKET_URL,
-    IS_DEV: ENV.IS_DEV,
-    IS_PROD: ENV.IS_PROD
-  });
-}
+// Log environment info ALWAYS (for debugging production issues)
+console.log('🔧 Environment Configuration:', {
+  WEBSOCKET_URL: ENV.WEBSOCKET_URL,
+  IS_DEV: ENV.IS_DEV,
+  IS_PROD: ENV.IS_PROD,
+  currentLocation: typeof window !== 'undefined' ? window.location.href : 'server-side',
+  hasAppConfig: typeof window !== 'undefined' && !!(window as any).APP_CONFIG,
+  appConfigValue: typeof window !== 'undefined' ? (window as any).APP_CONFIG?.WEBSOCKET_URL : 'not available'
+});

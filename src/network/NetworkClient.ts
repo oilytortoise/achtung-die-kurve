@@ -30,7 +30,28 @@ export class NetworkClient {
 
     constructor(serverUrl?: string) {
         // Use provided URL or environment configuration
-        this.serverUrl = serverUrl || ENV.WEBSOCKET_URL;
+        let finalUrl = serverUrl || ENV.WEBSOCKET_URL;
+        
+        // Override any template literals that might have slipped through
+        if (finalUrl.includes('${') || finalUrl.includes('__VITE_')) {
+            console.warn('Detected unresolved template in WebSocket URL:', finalUrl);
+            // Fallback to runtime config or hardcoded production URL
+            if (typeof window !== 'undefined' && (window as any).APP_CONFIG?.WEBSOCKET_URL) {
+                finalUrl = (window as any).APP_CONFIG.WEBSOCKET_URL;
+                console.log('Using window.APP_CONFIG fallback:', finalUrl);
+            } else if (window.location.hostname !== 'localhost') {
+                // Production fallback - construct from current location
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const hostname = window.location.hostname;
+                finalUrl = `${protocol}//${hostname}`;
+                console.log('Using location-based fallback:', finalUrl);
+            } else {
+                finalUrl = 'http://localhost:3001';
+                console.log('Using localhost fallback:', finalUrl);
+            }
+        }
+        
+        this.serverUrl = finalUrl;
         
         console.log('NetworkClient initialized with server URL:', this.serverUrl);
     }

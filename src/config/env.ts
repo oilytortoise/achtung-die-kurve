@@ -6,10 +6,10 @@ export const ENV = {
   WEBSOCKET_URL: import.meta.env?.VITE_WEBSOCKET_URL || 'http://localhost:3001',
   
   // Development flag
-  IS_DEV: import.meta.env?.DEV ?? true,
+  IS_DEV: import.meta.env?.VITE_DEV ?? true,
   
   // Production flag
-  IS_PROD: import.meta.env?.PROD ?? false,
+  IS_PROD: import.meta.env?.VITE_PROD ?? false,
 } as const;
 
 // Helper function to get environment variable with fallback

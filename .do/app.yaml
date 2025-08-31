@@ -42,8 +42,12 @@ services:
       - path: /
     environment_slug: node-js
     build_command: |
-      chmod +x scripts/build-production.sh
-      ./scripts/build-production.sh
+      echo "Starting build process..."
+      node --version && npm --version
+      npm install
+      npm run build
+      test -f dist/index.html || exit 1
+      echo "Build completed successfully!"
     envs:
       - key: NODE_ENV
         value: production
@@ -51,5 +55,3 @@ services:
         value: ${websocket-server.PUBLIC_URL}
       - key: NODE_OPTIONS
         value: "--max-old-space-size=8192"
-      - key: NODE_VERSION
-        value: "24.2.0"

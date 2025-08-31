@@ -27,8 +27,13 @@ export class NetworkClient {
     // Server configuration
     private readonly serverUrl: string;
 
-    constructor(serverUrl: string = 'http://localhost:3001') {
-        this.serverUrl = serverUrl;
+    constructor(serverUrl?: string) {
+        // Use provided URL, environment variable, or default to localhost for development
+        this.serverUrl = serverUrl || 
+            (import.meta.env.VITE_WEBSOCKET_URL as string) || 
+            'http://localhost:3001';
+        
+        console.log('NetworkClient initialized with server URL:', this.serverUrl);
     }
 
     // Connection Management

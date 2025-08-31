@@ -1,14 +1,27 @@
-import type { PlayerConfig, GameState } from '../types';
+import type { PlayerConfig, GameState, LobbyData, ConnectionState } from '../types';
 import { DEFAULT_PLAYER_COLORS, DEFAULT_KEY_BINDINGS } from '../types';
+import { LobbyManager } from './LobbyManager';
 
 export class UIManager {
     private players: PlayerConfig[] = [];
     private onStartGame?: (players: PlayerConfig[]) => void;
     private onPlayAgain?: () => void;
+    private onStartOnlineGame?: () => void;
+    private gameMode: 'local' | 'online' = 'local';
+    private lobbyManager: LobbyManager;
+    private isPlayerReady = false;
 
     constructor() {
+        this.lobbyManager = new LobbyManager();
         this.setupEventListeners();
-        this.addDefaultPlayer(); // Start with one player
+        this.setupOnlineEventListeners();
+        this.showMainMenu();
+        
+        // Check if there's a lobby code in URL
+        const lobbyCodeFromUrl = LobbyManager.parseLobbyCodeFromUrl();
+        if (lobbyCodeFromUrl) {
+            this.showJoinLobbyScreen(lobbyCodeFromUrl);
+        }
     }
 
     public setStartGameCallback(callback: (players: PlayerConfig[]) => void): void {
@@ -203,5 +216,344 @@ export class UIManager {
 
     public getPlayers(): PlayerConfig[] {
         return [...this.players];
+    }
+
+    // Online Multiplayer Methods
+    public setStartOnlineGameCallback(callback: () => void): void {
+        this.onStartOnlineGame = callback;
+    }
+
+    private setupOnlineEventListeners(): void {
+        // Main menu navigation
+        const localBtn = document.getElementById('local-multiplayer-btn');
+        localBtn?.addEventListener('click', () => this.showLocalMultiplayer());
+
+        const onlineBtn = document.getElementById('online-multiplayer-btn');
+        onlineBtn?.addEventListener('click', () => this.showOnlineMultiplayer());
+
+        // Back buttons
+        const backToMainBtns = document.querySelectorAll('#back-to-main, #back-to-main-online');
+        backToMainBtns.forEach(btn => {
+            btn.addEventListener('click', () => this.showMainMenu());
+        });
+
+        // Online lobby navigation
+        const createLobbyBtn = document.getElementById('create-lobby-btn');
+        createLobbyBtn?.addEventListener('click', () => this.showCreateLobbyScreen());
+
+        const joinLobbyBtn = document.getElementById('join-lobby-btn');
+        joinLobbyBtn?.addEventListener('click', () => this.showJoinLobbyScreen());
+
+        const backToOnlineBtns = document.querySelectorAll('#back-to-online, #back-to-online-join');
+        backToOnlineBtns.forEach(btn => {
+            btn.addEventListener('click', () => this.showOnlineMultiplayer());
+        });
+
+        // Lobby actions
+        const createLobbyConfirm = document.getElementById('create-lobby-confirm');
+        createLobbyConfirm?.addEventListener('click', () => this.createLobby());
+
+        const joinLobbyConfirm = document.getElementById('join-lobby-confirm');
+        joinLobbyConfirm?.addEventListener('click', () => this.joinLobby());
+
+        const leaveLobbyBtn = document.getElementById('leave-lobby-btn');
+        leaveLobbyBtn?.addEventListener('click', () => this.leaveLobby());
+
+        const readyBtn = document.getElementById('ready-btn');
+        readyBtn?.addEventListener('click', () => this.toggleReady());
+
+        const startOnlineGameBtn = document.getElementById('start-online-game');
+        startOnlineGameBtn?.addEventListener('click', () => this.startOnlineGame());
+
+        // Share buttons
+        const copyCodeBtn = document.getElementById('copy-code-btn');
+        copyCodeBtn?.addEventListener('click', () => this.copyLobbyCode());
+
+        const copyLinkBtn = document.getElementById('copy-link-btn');
+        copyLinkBtn?.addEventListener('click', () => this.copyLobbyLink());
+
+        // Setup lobby manager callbacks
+        this.lobbyManager.setLobbyStateChangeCallback((lobby) => this.handleLobbyStateChange(lobby));
+        this.lobbyManager.setConnectionStateChangeCallback((state) => this.handleConnectionStateChange(state));
+        this.lobbyManager.setGameStartedCallback(() => this.handleOnlineGameStarted());
+    }
+
+    private showMainMenu(): void {
+        this.gameMode = 'local';
+        this.showScreen('main-menu');
+    }
+
+    private showLocalMultiplayer(): void {
+        this.gameMode = 'local';
+        this.addDefaultPlayer(); // Start with one player for local
+        this.showScreen('start-screen');
+    }
+
+    private async showOnlineMultiplayer(): Promise<void> {
+        this.gameMode = 'online';
+        this.showScreen('online-menu');
+        
+        // Attempt to connect to server
+        const connected = await this.lobbyManager.connect();
+        if (!connected) {
+            this.showError('online-menu', 'Failed to connect to server');
+        }
+    }
+
+    private showCreateLobbyScreen(): void {
+        this.showScreen('create-lobby-screen');
+        const nameInput = document.getElementById('host-name') as HTMLInputElement;
+        if (nameInput) {
+            nameInput.focus();
+        }
+    }
+
+    private showJoinLobbyScreen(lobbyCode?: string): void {
+        this.showScreen('join-lobby-screen');
+        
+        if (lobbyCode) {
+            const codeInput = document.getElementById('lobby-code') as HTMLInputElement;
+            if (codeInput) {
+                codeInput.value = lobbyCode.toUpperCase();
+            }
+        }
+        
+        const nameInput = document.getElementById('player-name') as HTMLInputElement;
+        if (nameInput) {
+            nameInput.focus();
+        }
+    }
+
+    private async createLobby(): Promise<void> {
+        const nameInput = document.getElementById('host-name') as HTMLInputElement;
+        const playerName = nameInput?.value.trim();
+        
+        if (!playerName) {
+            this.showError('create-lobby-screen', 'Please enter your name');
+            return;
+        }
+
+        try {
+            const result = await this.lobbyManager.createLobby(playerName);
+            
+            if (result.success) {
+                console.log('Lobby created:', result.lobbyCode);
+                this.showLobbyScreen();
+            } else {
+                this.showError('create-lobby-screen', result.error || 'Failed to create lobby');
+            }
+        } catch (error) {
+            this.showError('create-lobby-screen', 'Connection error');
+        }
+    }
+
+    private async joinLobby(): Promise<void> {
+        const nameInput = document.getElementById('player-name') as HTMLInputElement;
+        const codeInput = document.getElementById('lobby-code') as HTMLInputElement;
+        
+        const playerName = nameInput?.value.trim();
+        const lobbyCode = codeInput?.value.trim().toUpperCase();
+        
+        if (!playerName) {
+            this.showError('join-lobby-screen', 'Please enter your name');
+            return;
+        }
+        
+        if (!lobbyCode) {
+            this.showError('join-lobby-screen', 'Please enter lobby code');
+            return;
+        }
+
+        try {
+            const result = await this.lobbyManager.joinLobby(lobbyCode, playerName);
+            
+            if (result.success) {
+                console.log('Joined lobby');
+                this.showLobbyScreen();
+            } else {
+                this.showError('join-lobby-screen', result.error || 'Failed to join lobby');
+            }
+        } catch (error) {
+            this.showError('join-lobby-screen', 'Connection error');
+        }
+    }
+
+    private showLobbyScreen(): void {
+        this.showScreen('lobby-screen');
+        const lobby = this.lobbyManager.getCurrentLobby();
+        
+        if (lobby) {
+            // Update lobby code display
+            const codeDisplay = document.getElementById('lobby-code-display');
+            if (codeDisplay) {
+                codeDisplay.textContent = lobby.id;
+            }
+            
+            this.updateLobbyDisplay(lobby);
+        }
+    }
+
+    private updateLobbyDisplay(lobby: LobbyData): void {
+        // Update players list
+        const playersDiv = document.getElementById('lobby-players');
+        if (playersDiv) {
+            playersDiv.innerHTML = lobby.players.map(player => {
+                const statusText = player.isHost ? 'Host' : (player.isReady ? 'Ready' : 'Not Ready');
+                const statusClass = player.isHost ? 'host' : (player.isReady ? 'ready' : '');
+                const itemClass = `lobby-player-item ${statusClass}`;
+                
+                // Show key bindings if available
+                const keyBindingsText = player.leftKey && player.rightKey ? 
+                    `${this.getKeyDisplayName(player.leftKey)} / ${this.getKeyDisplayName(player.rightKey)}` : '';
+                
+                return `
+                    <div class="${itemClass}">
+                        <div class="lobby-player-info">
+                            <div class="player-color" style="background-color: ${player.color};"></div>
+                            <span>${player.name}</span>
+                            ${keyBindingsText ? `<span class="player-controls" style="margin-left: 10px; font-size: 0.8rem; color: #ccc;">(${keyBindingsText})</span>` : ''}
+                        </div>
+                        <span class="lobby-player-status ${statusClass}">${statusText}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Update ready button
+        const readyBtn = document.getElementById('ready-btn') as HTMLButtonElement;
+        const localPlayer = this.lobbyManager.getLocalPlayer();
+        
+        if (readyBtn && localPlayer) {
+            readyBtn.textContent = localPlayer.isReady ? 'Not Ready' : 'Ready';
+            readyBtn.className = localPlayer.isReady ? 'ready' : 'not-ready';
+        }
+
+        // Update start game button visibility
+        const startBtn = document.getElementById('start-online-game');
+        if (startBtn && this.lobbyManager.isHost()) {
+            if (this.lobbyManager.canStartGame()) {
+                startBtn.classList.remove('hidden');
+            } else {
+                startBtn.classList.add('hidden');
+            }
+        }
+
+        // Update lobby status
+        const statusDiv = document.getElementById('lobby-status');
+        if (statusDiv) {
+            const readyCount = lobby.players.filter(p => p.isReady).length;
+            const totalCount = lobby.players.length;
+            
+            if (lobby.players.length < 2) {
+                statusDiv.textContent = 'Waiting for more players...';
+            } else if (readyCount === totalCount) {
+                statusDiv.textContent = 'All players ready!';
+            } else {
+                statusDiv.textContent = `${readyCount}/${totalCount} players ready`;
+            }
+        }
+    }
+
+    private handleLobbyStateChange(lobby: LobbyData | null): void {
+        if (lobby) {
+            this.updateLobbyDisplay(lobby);
+        } else {
+            // Lobby was closed or we were disconnected
+            this.showOnlineMultiplayer();
+        }
+    }
+
+    private handleConnectionStateChange(state: ConnectionState): void {
+        this.updateConnectionStatus(state);
+    }
+
+    private handleOnlineGameStarted(): void {
+        this.showScreen('game-hud');
+        if (this.onStartOnlineGame) {
+            this.onStartOnlineGame();
+        }
+    }
+
+    private updateConnectionStatus(state: ConnectionState): void {
+        const statusDiv = document.getElementById('connection-status');
+        if (!statusDiv) return;
+
+        statusDiv.className = 'connection-status';
+        
+        if (state.isConnecting) {
+            statusDiv.classList.add('connecting');
+            statusDiv.textContent = 'Connecting to server...';
+        } else if (state.isConnected) {
+            statusDiv.classList.add('connected');
+            statusDiv.textContent = `Connected (${state.latency}ms)`;
+        } else {
+            statusDiv.classList.add('disconnected');
+            statusDiv.textContent = state.error || 'Disconnected';
+        }
+    }
+
+    private leaveLobby(): void {
+        this.lobbyManager.leaveLobby();
+        this.showOnlineMultiplayer();
+    }
+
+    private toggleReady(): void {
+        this.isPlayerReady = !this.isPlayerReady;
+        this.lobbyManager.setReady(this.isPlayerReady);
+    }
+
+    private startOnlineGame(): void {
+        this.lobbyManager.startGame();
+    }
+
+    private async copyLobbyCode(): Promise<void> {
+        const success = await this.lobbyManager.copyLobbyCodeToClipboard();
+        const btn = document.getElementById('copy-code-btn');
+        
+        if (btn) {
+            const originalText = btn.textContent;
+            btn.textContent = success ? 'Copied!' : 'Failed';
+            setTimeout(() => {
+                btn.textContent = originalText;
+            }, 2000);
+        }
+    }
+
+    private async copyLobbyLink(): Promise<void> {
+        const success = await this.lobbyManager.copyLobbyLinkToClipboard();
+        const btn = document.getElementById('copy-link-btn');
+        
+        if (btn) {
+            const originalText = btn.textContent;
+            btn.textContent = success ? 'Copied!' : 'Failed';
+            setTimeout(() => {
+                btn.textContent = originalText;
+            }, 2000);
+        }
+    }
+
+    private showError(screenId: string, message: string): void {
+        const errorDiv = document.getElementById(`${screenId.replace('-screen', '')}-error`);
+        if (errorDiv) {
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                errorDiv.classList.remove('show');
+            }, 5000);
+        }
+    }
+
+    public getGameMode(): 'local' | 'online' {
+        return this.gameMode;
+    }
+    
+    public getLobbyManager(): LobbyManager {
+        return this.lobbyManager;
+    }
+
+    public cleanup(): void {
+        this.lobbyManager.cleanup();
     }
 }

@@ -1,0 +1,22 @@
+{
+  "name": "achtung-die-kurve-server",
+  "version": "1.0.0",
+  "description": "WebSocket server for Achtung die Kurve online multiplayer",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "socket.io": "^4.7.5",
+    "nanoid": "^5.0.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "keywords": ["websocket", "multiplayer", "game-server", "achtung-die-kurve"],
+  "author": "",
+  "license": "MIT"
+}

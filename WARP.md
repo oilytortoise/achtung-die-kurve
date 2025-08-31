@@ -15,6 +15,14 @@ npm install
 # Start development server (opens browser at http://localhost:3000)
 npm run dev
 
+# Start full development environment (client + server for online multiplayer)
+npm run dev:full
+# OR
+./scripts/dev.sh
+
+# Start only the WebSocket server
+npm run server
+
 # Build for production
 npm run build
 
@@ -32,9 +40,16 @@ The game follows a modular architecture with clear separation of concerns:
 ### Core Components
 - **main.ts**: Entry point that initializes Phaser game and coordinates between UI and game logic
 - **GameScene**: Phaser scene that manages the game canvas and rendering
-- **GameManager**: Central game logic controller handling rounds, scoring, and game state
+- **GameManager**: Central game logic controller handling rounds, scoring, and game state (local multiplayer)
+- **OnlineGameManager**: Handles online multiplayer game logic and network synchronization
 - **Player**: Entity representing each player with movement, collision detection, and trail rendering
-- **UIManager**: Handles all DOM-based UI including player setup, HUD, and game over screens
+- **UIManager**: Handles all DOM-based UI including player setup, HUD, lobby management, and game over screens
+
+### Online Multiplayer Components
+- **NetworkClient**: WebSocket client with automatic reconnection and message queuing
+- **LobbyManager**: Handles lobby creation, joining, player management, and ready states
+- **WebSocket Server**: Node.js server managing game lobbies and authoritative game state
+- **ErrorHandler**: Centralized error handling and user notifications
 
 ### Key Architecture Patterns
 - **Entity-Manager Pattern**: GameManager controls Player entities

@@ -4,6 +4,10 @@ export interface PlayerConfig {
     color: string;
     leftKey: string;
     rightKey: string;
+    isReady?: boolean;
+    isHost?: boolean;
+    isOnline?: boolean;
+    socketId?: string;
 }
 
 export interface GameConfig {
@@ -11,6 +15,8 @@ export interface GameConfig {
     height: number;
     players: PlayerConfig[];
     roundsToWin: number;
+    gameMode?: 'local' | 'online';
+    lobbyCode?: string;
 }
 
 export interface PlayerScore {
@@ -21,7 +27,61 @@ export interface PlayerScore {
 export interface GameState {
     currentRound: number;
     scores: PlayerScore[];
-    gamePhase: 'setup' | 'playing' | 'roundOver' | 'gameOver';
+    gamePhase: 'setup' | 'lobby' | 'playing' | 'roundOver' | 'gameOver';
+    gameMode?: 'local' | 'online';
+}
+
+// Online multiplayer specific types
+export interface LobbyData {
+    id: string;
+    playerCount: number;
+    maxPlayers: number;
+    phase: string;
+    players: OnlinePlayer[];
+}
+
+export interface OnlinePlayer {
+    id: string;
+    name: string;
+    color: string;
+    isReady: boolean;
+    isHost: boolean;
+    leftKey?: string;
+    rightKey?: string;
+    position?: { x: number; y: number };
+    rotation?: number;
+    alive?: boolean;
+    trailPoints?: { x: number; y: number }[];
+}
+
+export interface NetworkGameState {
+    gameState: {
+        phase: string;
+        currentRound: number;
+        roundsToWin: number;
+        scores: PlayerScore[];
+        gameConfig: {
+            width: number;
+            height: number;
+        };
+    };
+    players: OnlinePlayer[];
+    serverTime: number;
+    tickCount: number;
+}
+
+export interface ConnectionState {
+    isConnected: boolean;
+    isConnecting: boolean;
+    error: string | null;
+    latency: number;
+    lobbyCode?: string;
+}
+
+export interface PlayerInput {
+    left: boolean;
+    right: boolean;
+    timestamp?: number;
 }
 
 export const DEFAULT_PLAYER_COLORS = [

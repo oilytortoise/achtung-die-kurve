@@ -402,11 +402,16 @@ export class UIManager {
                 const statusClass = player.isHost ? 'host' : (player.isReady ? 'ready' : '');
                 const itemClass = `lobby-player-item ${statusClass}`;
                 
+                // Show key bindings if available
+                const keyBindingsText = player.leftKey && player.rightKey ? 
+                    `${this.getKeyDisplayName(player.leftKey)} / ${this.getKeyDisplayName(player.rightKey)}` : '';
+                
                 return `
                     <div class="${itemClass}">
                         <div class="lobby-player-info">
                             <div class="player-color" style="background-color: ${player.color};"></div>
                             <span>${player.name}</span>
+                            ${keyBindingsText ? `<span class="player-controls" style="margin-left: 10px; font-size: 0.8rem; color: #ccc;">(${keyBindingsText})</span>` : ''}
                         </div>
                         <span class="lobby-player-status ${statusClass}">${statusText}</span>
                     </div>

@@ -20,6 +20,18 @@ const MAX_PLAYERS_PER_LOBBY = 8;
 const LOBBY_CODE_LENGTH = 6;
 const GAME_TICK_RATE = 60; // 60 FPS server tick rate
 
+// Player key bindings (matches client-side DEFAULT_KEY_BINDINGS)
+const DEFAULT_KEY_BINDINGS = [
+    { left: 'KeyA', right: 'KeyS' },
+    { left: 'ArrowLeft', right: 'ArrowRight' },
+    { left: 'KeyQ', right: 'KeyW' },
+    { left: 'KeyO', right: 'KeyP' },
+    { left: 'KeyF', right: 'KeyG' },
+    { left: 'KeyH', right: 'KeyJ' },
+    { left: 'KeyN', right: 'KeyM' },
+    { left: 'KeyZ', right: 'KeyX' }
+];
+
 class Lobby {
     constructor(hostSocketId) {
         this.id = generateLobbyCode();
@@ -45,6 +57,10 @@ class Lobby {
             return { success: false, error: 'Lobby is full' };
         }
 
+        // Assign key bindings based on player index (order joined)
+        const playerIndex = this.players.size;
+        const keyBinding = DEFAULT_KEY_BINDINGS[playerIndex] || DEFAULT_KEY_BINDINGS[0];
+
         const player = {
             id: playerData.id || nanoid(8),
             socketId,
@@ -52,6 +68,8 @@ class Lobby {
             color: playerData.color,
             isReady: false,
             isHost: socketId === this.hostSocketId,
+            leftKey: keyBinding.left,
+            rightKey: keyBinding.right,
             position: { x: 0, y: 0 },
             rotation: 0,
             alive: true,
@@ -277,6 +295,8 @@ class Lobby {
                 id: p.id,
                 name: p.name,
                 color: p.color,
+                leftKey: p.leftKey,
+                rightKey: p.rightKey,
                 position: p.position,
                 rotation: p.rotation,
                 alive: p.alive,
@@ -308,7 +328,9 @@ class Lobby {
                 name: p.name,
                 color: p.color,
                 isReady: p.isReady,
-                isHost: p.isHost
+                isHost: p.isHost,
+                leftKey: p.leftKey,
+                rightKey: p.rightKey
             }))
         };
     }

@@ -46,6 +46,8 @@ export interface OnlinePlayer {
     color: string;
     isReady: boolean;
     isHost: boolean;
+    leftKey?: string;
+    rightKey?: string;
     position?: { x: number; y: number };
     rotation?: number;
     alive?: boolean;

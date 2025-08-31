@@ -12,6 +12,9 @@ export class OnlineGameManager {
     private inputBuffer: PlayerInput[] = [];
     private interpolationBuffer: NetworkGameState[] = [];
     private maxBufferSize = 10;
+    private leftPressed: boolean = false;
+    private rightPressed: boolean = false;
+    private keyListenersSetup: boolean = false;
 
     constructor(scene: Phaser.Scene, _config: GameConfig) {
         this.scene = scene;
@@ -132,21 +135,55 @@ export class OnlineGameManager {
         this.renderGameState();
     }
 
+    private setupKeyboardListeners(): void {
+        if (this.keyListenersSetup) return;
+        
+        const localPlayerData = this.playerData.get(this.localPlayerId!);
+        if (!localPlayerData || !localPlayerData.leftKey || !localPlayerData.rightKey) {
+            return;
+        }
+
+        const leftKey = localPlayerData.leftKey;
+        const rightKey = localPlayerData.rightKey;
+
+        console.log(`Setting up keyboard listeners for ${localPlayerData.name}: ${leftKey} (left) / ${rightKey} (right)`);
+
+        // Set up keyboard input listeners (similar to local Player.ts)
+        this.scene.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
+            if (event.code === leftKey) {
+                this.leftPressed = true;
+            }
+            if (event.code === rightKey) {
+                this.rightPressed = true;
+            }
+        });
+
+        this.scene.input.keyboard?.on('keyup', (event: KeyboardEvent) => {
+            if (event.code === leftKey) {
+                this.leftPressed = false;
+            }
+            if (event.code === rightKey) {
+                this.rightPressed = false;
+            }
+        });
+
+        this.keyListenersSetup = true;
+    }
+
     private handleLocalInput(): void {
         if (!this.localPlayerId) return;
-
-        // Get current input state
-        const keyboard = this.scene.input.keyboard;
-        if (!keyboard) return;
 
         const localPlayerData = this.playerData.get(this.localPlayerId);
         if (!localPlayerData) return;
 
-        // Determine which keys to check based on player configuration
-        // For now, we'll use a simple approach - this would need to be more sophisticated
+        // Setup keyboard listeners if not done yet
+        if (!this.keyListenersSetup) {
+            this.setupKeyboardListeners();
+        }
+
         const input: PlayerInput = {
-            left: keyboard.checkDown(keyboard.addKey('ArrowLeft'), 0) || keyboard.checkDown(keyboard.addKey('A'), 0),
-            right: keyboard.checkDown(keyboard.addKey('ArrowRight'), 0) || keyboard.checkDown(keyboard.addKey('S'), 0),
+            left: this.leftPressed,
+            right: this.rightPressed,
             timestamp: Date.now()
         };
 
@@ -202,6 +239,12 @@ export class OnlineGameManager {
         this.playerData.clear();
         this.inputBuffer = [];
         this.interpolationBuffer = [];
+        
+        // Reset input state
+        this.leftPressed = false;
+        this.rightPressed = false;
+        this.keyListenersSetup = false;
+        
         this.state = {
             currentRound: 1,
             scores: [],
@@ -217,6 +260,9 @@ export class OnlineGameManager {
         networkClient.off('gameStarted');
         networkClient.off('playerJoined');
         networkClient.off('playerLeft');
+        
+        // Remove keyboard listeners
+        this.scene.input.keyboard?.removeAllListeners();
         
         this.reset();
     }

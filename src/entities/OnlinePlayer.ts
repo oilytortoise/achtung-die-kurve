@@ -10,7 +10,6 @@ export class OnlinePlayer {
     private trail: Phaser.GameObjects.Graphics;
     private playerDot: Phaser.GameObjects.Graphics;
     private colorNumber: number;
-    private lastTrailLength: number = 0;
 
     constructor(scene: Phaser.Scene, playerData: OnlinePlayerData) {
         this.id = playerData.id;
@@ -37,7 +36,6 @@ export class OnlinePlayer {
             
             // Always redraw the trail to ensure it's current
             this.redrawTrail(newPoints);
-            this.lastTrailLength = newPoints.length;
         }
 
         // Update player position dot

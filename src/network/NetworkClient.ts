@@ -46,9 +46,12 @@ export class NetworkClient {
                 const hostname = window.location.hostname;
                 
                 // For Digital Ocean Apps, the websocket server should be accessible
-                // either on the same domain or via a specific subdomain
-                // Based on your app.yaml, websockets are routed through /socket.io path
-                finalUrl = `${protocol}//${hostname}`;
+                // via the same domain with /socket.io routing
+                if (hostname === 'achtung.jackstevens.tech') {
+                    finalUrl = 'wss://achtung.jackstevens.tech';
+                } else {
+                    finalUrl = `${protocol}//${hostname}`;
+                }
                 console.log('Using Digital Ocean production fallback:', finalUrl);
                 console.log('Note: WebSocket server should be accessible via /socket.io route');
             } else {

@@ -15,17 +15,30 @@
     <script>
         function displayResults() {
             const results = document.getElementById('results');
+            const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const constructedUrl = `${protocol}//${window.location.hostname}`;
+            
             results.innerHTML = `
                 <h2>Configuration Values:</h2>
-                <p><strong>window.APP_CONFIG:</strong> ${JSON.stringify(window.APP_CONFIG, null, 2)}</p>
+                <p><strong>window.APP_CONFIG:</strong> <pre>${JSON.stringify(window.APP_CONFIG, null, 2)}</pre></p>
                 <p><strong>WEBSOCKET_URL from APP_CONFIG:</strong> ${window.APP_CONFIG?.WEBSOCKET_URL || 'undefined'}</p>
-                
-                <h2>Vite Environment Variables:</h2>
-                <p><strong>import.meta.env:</strong> ${typeof import !== 'undefined' && import.meta ? JSON.stringify(import.meta.env, null, 2) : 'Not available in this context'}</p>
+                <p><strong>APP_CONFIG VERSION:</strong> ${window.APP_CONFIG?.VERSION || 'undefined'}</p>
                 
                 <h2>Environment Detection:</h2>
                 <p><strong>Location:</strong> ${window.location.href}</p>
-                <p><strong>Is Production:</strong> ${window.location.hostname !== 'localhost'}</p>
+                <p><strong>Hostname:</strong> ${window.location.hostname}</p>
+                <p><strong>Protocol:</strong> ${window.location.protocol}</p>
+                <p><strong>Is Production:</strong> ${isProduction}</p>
+                <p><strong>Constructed WebSocket URL:</strong> ${constructedUrl}</p>
+                
+                <h2>Template Detection:</h2>
+                <p><strong>Contains ${}</strong>: ${window.APP_CONFIG?.WEBSOCKET_URL?.includes('${') || false}</p>
+                <p><strong>Contains __VITE_:</strong> ${window.APP_CONFIG?.WEBSOCKET_URL?.includes('__VITE_') || false}</p>
+                
+                <h2>Console Logs:</h2>
+                <p><em>Check browser console for 🔧 debug messages</em></p>
+                <p><strong>Load time:</strong> ${new Date().toISOString()}</p>
             `;
         }
         

@@ -38,19 +38,32 @@ COPY --from=build /app/dist /usr/share/nginx/html
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Create entrypoint script inline to avoid file copy issues
+# Create entrypoint script inline with enhanced debugging and error handling
 RUN echo '#!/bin/sh' > /entrypoint.sh && \
     echo 'set -e' >> /entrypoint.sh && \
     echo 'echo "[Entrypoint] Starting configuration injection..."' >> /entrypoint.sh && \
+    echo 'echo "[Entrypoint] Environment variables:"' >> /entrypoint.sh && \
+    echo 'env | grep -E "(VITE_|PORT|NODE_ENV)" || echo "No VITE_ variables found"' >> /entrypoint.sh && \
     echo 'CONFIG_FILE="/usr/share/nginx/html/config.js"' >> /entrypoint.sh && \
+    echo 'echo "[Entrypoint] Config file exists: $(test -f "$CONFIG_FILE" && echo "YES" || echo "NO")"' >> /entrypoint.sh && \
+    echo 'if [ -f "$CONFIG_FILE" ]; then' >> /entrypoint.sh && \
+    echo '  echo "[Entrypoint] Original config.js content:"' >> /entrypoint.sh && \
+    echo '  cat "$CONFIG_FILE"' >> /entrypoint.sh && \
+    echo 'fi' >> /entrypoint.sh && \
     echo 'if [ -n "$VITE_WEBSOCKET_URL" ]; then' >> /entrypoint.sh && \
     echo '  echo "[Entrypoint] Injecting WEBSOCKET_URL: $VITE_WEBSOCKET_URL"' >> /entrypoint.sh && \
     echo '  sed -i "s|__VITE_WEBSOCKET_URL__|$VITE_WEBSOCKET_URL|g" "$CONFIG_FILE"' >> /entrypoint.sh && \
+    echo '  echo "[Entrypoint] Substitution completed"' >> /entrypoint.sh && \
     echo 'else' >> /entrypoint.sh && \
-    echo '  echo "[Entrypoint] Warning: VITE_WEBSOCKET_URL not set, using localhost"' >> /entrypoint.sh && \
-    echo '  sed -i "s|__VITE_WEBSOCKET_URL__|http://localhost:3001|g" "$CONFIG_FILE"' >> /entrypoint.sh && \
+    echo '  echo "[Entrypoint] ERROR: VITE_WEBSOCKET_URL not set!"' >> /entrypoint.sh && \
+    echo '  echo "[Entrypoint] Available env vars:"' >> /entrypoint.sh && \
+    echo '  env' >> /entrypoint.sh && \
+    echo '  echo "[Entrypoint] Using fallback: wss://achtung.jackstevens.tech"' >> /entrypoint.sh && \
+    echo '  sed -i "s|__VITE_WEBSOCKET_URL__|wss://achtung.jackstevens.tech|g" "$CONFIG_FILE"' >> /entrypoint.sh && \
     echo 'fi' >> /entrypoint.sh && \
-    echo 'echo "[Entrypoint] Configuration complete, starting nginx..."' >> /entrypoint.sh && \
+    echo 'echo "[Entrypoint] Final config.js content:"' >> /entrypoint.sh && \
+    echo 'cat "$CONFIG_FILE"' >> /entrypoint.sh && \
+    echo 'echo "[Entrypoint] Starting nginx..."' >> /entrypoint.sh && \
     echo 'exec nginx -g "daemon off;"' >> /entrypoint.sh && \
     chmod +x /entrypoint.sh
 

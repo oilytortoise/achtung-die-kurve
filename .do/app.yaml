@@ -44,4 +44,4 @@ services:
       - key: NODE_ENV
         value: production
       - key: VITE_WEBSOCKET_URL
-        value: "https://${websocket-server.PUBLIC_URL}"
+        value: "wss://achtung.jackstevens.tech"

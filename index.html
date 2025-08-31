@@ -9,14 +9,91 @@
 <body>
     <div id="game-container">
         <div id="ui-overlay">
-            <div id="start-screen" class="screen">
+            <!-- Main Menu -->
+            <div id="main-menu" class="screen">
                 <h1>Achtung die Kurve</h1>
+                <div class="menu-buttons">
+                    <button id="local-multiplayer-btn">Local Multiplayer</button>
+                    <button id="online-multiplayer-btn">Online Multiplayer</button>
+                </div>
+            </div>
+
+            <!-- Local Multiplayer Setup -->
+            <div id="start-screen" class="screen hidden">
+                <h1>Local Multiplayer</h1>
                 <div id="player-setup">
                     <h2>Players</h2>
                     <div id="player-list"></div>
                     <button id="add-player">Add Player</button>
                 </div>
-                <button id="start-game" disabled>Start Game</button>
+                <div class="menu-buttons">
+                    <button id="back-to-main">Back</button>
+                    <button id="start-game" disabled>Start Game</button>
+                </div>
+            </div>
+
+            <!-- Online Multiplayer Menu -->
+            <div id="online-menu" class="screen hidden">
+                <h1>Online Multiplayer</h1>
+                <div id="connection-status"></div>
+                <div class="menu-buttons">
+                    <button id="create-lobby-btn">Create Lobby</button>
+                    <button id="join-lobby-btn">Join Lobby</button>
+                    <button id="back-to-main-online">Back</button>
+                </div>
+            </div>
+
+            <!-- Create Lobby Screen -->
+            <div id="create-lobby-screen" class="screen hidden">
+                <h2>Create Lobby</h2>
+                <div class="form-group">
+                    <label for="host-name">Your Name:</label>
+                    <input type="text" id="host-name" placeholder="Enter your name" maxlength="20">
+                </div>
+                <div class="menu-buttons">
+                    <button id="back-to-online">Back</button>
+                    <button id="create-lobby-confirm">Create Lobby</button>
+                </div>
+                <div id="create-lobby-error" class="error-message"></div>
+            </div>
+
+            <!-- Join Lobby Screen -->
+            <div id="join-lobby-screen" class="screen hidden">
+                <h2>Join Lobby</h2>
+                <div class="form-group">
+                    <label for="player-name">Your Name:</label>
+                    <input type="text" id="player-name" placeholder="Enter your name" maxlength="20">
+                </div>
+                <div class="form-group">
+                    <label for="lobby-code">Lobby Code:</label>
+                    <input type="text" id="lobby-code" placeholder="Enter lobby code" maxlength="6">
+                </div>
+                <div class="menu-buttons">
+                    <button id="back-to-online-join">Back</button>
+                    <button id="join-lobby-confirm">Join Lobby</button>
+                </div>
+                <div id="join-lobby-error" class="error-message"></div>
+            </div>
+
+            <!-- Lobby Screen -->
+            <div id="lobby-screen" class="screen hidden">
+                <h2>Lobby: <span id="lobby-code-display"></span></h2>
+                <div id="lobby-info">
+                    <div class="share-section">
+                        <p>Share this code with friends:</p>
+                        <div class="share-buttons">
+                            <button id="copy-code-btn">Copy Code</button>
+                            <button id="copy-link-btn">Copy Link</button>
+                        </div>
+                    </div>
+                    <div id="lobby-players"></div>
+                    <div id="lobby-status"></div>
+                </div>
+                <div class="menu-buttons">
+                    <button id="leave-lobby-btn">Leave Lobby</button>
+                    <button id="ready-btn">Ready</button>
+                    <button id="start-online-game" class="hidden">Start Game</button>
+                </div>
             </div>
             
             <div id="game-hud" class="screen hidden">

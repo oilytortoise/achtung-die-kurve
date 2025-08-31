@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  achtung-server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+    volumes:
+      - ./server/logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http = require('http'); const options = { host: 'localhost', port: 3001, timeout: 2000 }; const request = http.request(options, (res) => { process.exit(res.statusCode === 404 ? 0 : 1); }); request.on('error', () => process.exit(1)); request.end();"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  default:
+    name: achtung-network

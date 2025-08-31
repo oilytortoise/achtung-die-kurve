@@ -38,13 +38,23 @@ COPY --from=build /app/dist /usr/share/nginx/html
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy and setup entrypoint script
-COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
-
-# The nginx user already exists in nginx:alpine, so we don't need to create it
+# Create entrypoint script inline to avoid file copy issues
+RUN echo '#!/bin/sh' > /entrypoint.sh && \
+    echo 'set -e' >> /entrypoint.sh && \
+    echo 'echo "[Entrypoint] Starting configuration injection..."' >> /entrypoint.sh && \
+    echo 'CONFIG_FILE="/usr/share/nginx/html/config.js"' >> /entrypoint.sh && \
+    echo 'if [ -n "$VITE_WEBSOCKET_URL" ]; then' >> /entrypoint.sh && \
+    echo '  echo "[Entrypoint] Injecting WEBSOCKET_URL: $VITE_WEBSOCKET_URL"' >> /entrypoint.sh && \
+    echo '  sed -i "s|__VITE_WEBSOCKET_URL__|$VITE_WEBSOCKET_URL|g" "$CONFIG_FILE"' >> /entrypoint.sh && \
+    echo 'else' >> /entrypoint.sh && \
+    echo '  echo "[Entrypoint] Warning: VITE_WEBSOCKET_URL not set, using localhost"' >> /entrypoint.sh && \
+    echo '  sed -i "s|__VITE_WEBSOCKET_URL__|http://localhost:3001|g" "$CONFIG_FILE"' >> /entrypoint.sh && \
+    echo 'fi' >> /entrypoint.sh && \
+    echo 'echo "[Entrypoint] Configuration complete, starting nginx..."' >> /entrypoint.sh && \
+    echo 'exec nginx -g "daemon off;"' >> /entrypoint.sh && \
+    chmod +x /entrypoint.sh
 
 EXPOSE 80
 
-# Use our custom entrypoint script
-CMD ["/docker-entrypoint.sh"]
+# Use the inline entrypoint script
+ENTRYPOINT ["/entrypoint.sh"]

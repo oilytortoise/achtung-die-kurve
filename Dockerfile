@@ -38,13 +38,18 @@ COPY --from=build /app/dist /usr/share/nginx/html
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Create the config injection script using printf to avoid heredoc issues
-RUN printf '#!/bin/bash\nset -e\n\necho "[Config Injection] Starting configuration injection..."\n\n# Inject runtime configuration\nif [ -n "$VITE_WEBSOCKET_URL" ]; then\n  echo "[Config Injection] Injecting WEBSOCKET_URL: $VITE_WEBSOCKET_URL"\n  sed -i "s|__VITE_WEBSOCKET_URL__|$VITE_WEBSOCKET_URL|g" /usr/share/nginx/html/config.js\n  echo "[Config Injection] Configuration injection complete"\nelse\n  echo "[Config Injection] Warning: VITE_WEBSOCKET_URL not set, using default localhost"\nfi\n\n# Verify the config file was updated\necho "[Config Injection] Current config.js content:"\ncat /usr/share/nginx/html/config.js\n\necho "[Config Injection] Configuration injection finished"\n' > /docker-entrypoint.d/40-inject-config.sh
+# Create a template config file that nginx can substitute
+RUN mv /usr/share/nginx/html/config.js /usr/share/nginx/html/config.js.template
 
-# Make it executable and verify it was created
-RUN chmod +x /docker-entrypoint.d/40-inject-config.sh && \
-    ls -la /docker-entrypoint.d/40-inject-config.sh && \
-    echo "Script exists and is executable"
+# Set up environment variable for nginx envsubst
+ENV NGINX_ENVSUBST_OUTPUT_DIR=/usr/share/nginx/html
+ENV NGINX_ENVSUBST_TEMPLATE_DIR=/usr/share/nginx/html
+ENV NGINX_ENVSUBST_TEMPLATE_SUFFIX=.template
+ENV NGINX_ENVSUBST_FILTER_FILES=config.js
+# Tell nginx which variables to substitute
+ENV DOLLAR='$'
+# Add debug output
+RUN echo "VITE_WEBSOCKET_URL will be substituted in templates"
 
 # The nginx user already exists in nginx:alpine, so we don't need to create it
 

@@ -692,7 +692,7 @@ export class UIManager {
 
     private isStartNextRoundButtonVisible(): boolean {
         const btn = document.getElementById('start-next-round-btn');
-        return btn && !btn.classList.contains('hidden');
+        return btn !== null && !btn.classList.contains('hidden');
     }
 
     public cleanup(): void {

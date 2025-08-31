@@ -38,27 +38,34 @@ COPY --from=build /app/dist /usr/share/nginx/html
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Create the config injection script directly in the container
-RUN echo '#!/bin/bash' > /docker-entrypoint.d/40-inject-config.sh && \
-    echo 'set -e' >> /docker-entrypoint.d/40-inject-config.sh && \
-    echo '' >> /docker-entrypoint.d/40-inject-config.sh && \
-    echo 'echo "[Config Injection] Starting configuration injection..."' >> /docker-entrypoint.d/40-inject-config.sh && \
-    echo '' >> /docker-entrypoint.d/40-inject-config.sh && \
-    echo '# Inject runtime configuration' >> /docker-entrypoint.d/40-inject-config.sh && \
-    echo 'if [ -n "$VITE_WEBSOCKET_URL" ]; then' >> /docker-entrypoint.d/40-inject-config.sh && \
-    echo '  echo "[Config Injection] Injecting WEBSOCKET_URL: $VITE_WEBSOCKET_URL"' >> /docker-entrypoint.d/40-inject-config.sh && \
-    echo '  sed -i "s|__VITE_WEBSOCKET_URL__|$VITE_WEBSOCKET_URL|g" /usr/share/nginx/html/config.js' >> /docker-entrypoint.d/40-inject-config.sh && \
-    echo '  echo "[Config Injection] Configuration injection complete"' >> /docker-entrypoint.d/40-inject-config.sh && \
-    echo 'else' >> /docker-entrypoint.d/40-inject-config.sh && \
-    echo '  echo "[Config Injection] Warning: VITE_WEBSOCKET_URL not set, using default localhost"' >> /docker-entrypoint.d/40-inject-config.sh && \
-    echo 'fi' >> /docker-entrypoint.d/40-inject-config.sh && \
-    echo '' >> /docker-entrypoint.d/40-inject-config.sh && \
-    echo '# Verify the config file was updated' >> /docker-entrypoint.d/40-inject-config.sh && \
-    echo 'echo "[Config Injection] Current config.js content:"' >> /docker-entrypoint.d/40-inject-config.sh && \
-    echo 'cat /usr/share/nginx/html/config.js' >> /docker-entrypoint.d/40-inject-config.sh && \
-    echo '' >> /docker-entrypoint.d/40-inject-config.sh && \
-    echo 'echo "[Config Injection] Configuration injection finished"' >> /docker-entrypoint.d/40-inject-config.sh && \
-    chmod +x /docker-entrypoint.d/40-inject-config.sh
+# Debug: List what's in docker-entrypoint.d and create our script
+RUN ls -la /docker-entrypoint.d/ && \
+    cat > /docker-entrypoint.d/40-inject-config.sh << 'EOF'
+#!/bin/bash
+set -e
+
+echo "[Config Injection] Starting configuration injection..."
+
+# Inject runtime configuration
+if [ -n "$VITE_WEBSOCKET_URL" ]; then
+  echo "[Config Injection] Injecting WEBSOCKET_URL: $VITE_WEBSOCKET_URL"
+  sed -i "s|__VITE_WEBSOCKET_URL__|$VITE_WEBSOCKET_URL|g" /usr/share/nginx/html/config.js
+  echo "[Config Injection] Configuration injection complete"
+else
+  echo "[Config Injection] Warning: VITE_WEBSOCKET_URL not set, using default localhost"
+fi
+
+# Verify the config file was updated
+echo "[Config Injection] Current config.js content:"
+cat /usr/share/nginx/html/config.js
+
+echo "[Config Injection] Configuration injection finished"
+EOF
+
+# Make it executable and verify it was created
+RUN chmod +x /docker-entrypoint.d/40-inject-config.sh && \
+    ls -la /docker-entrypoint.d/40-inject-config.sh && \
+    echo "Script content:" && cat /docker-entrypoint.d/40-inject-config.sh
 
 # The nginx user already exists in nginx:alpine, so we don't need to create it
 

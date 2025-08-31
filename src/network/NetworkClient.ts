@@ -177,6 +177,10 @@ export class NetworkClient {
             this.emit('gameStateUpdate', networkGameState);
         });
 
+        this.socket.on('countdownUpdate', (data: { count: number }) => {
+            this.emit('countdownUpdate', data);
+        });
+
         // Error events
         this.socket.on('error', (error: any) => {
             console.error('Socket error:', error);
@@ -267,6 +271,10 @@ export class NetworkClient {
 
     startGame(): void {
         this.sendMessage('startGame', {});
+    }
+
+    startNextRound(): void {
+        this.sendMessage('startNextRound', {});
     }
 
     sendPlayerInput(input: PlayerInput): void {

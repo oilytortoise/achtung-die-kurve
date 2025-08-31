@@ -54,6 +54,10 @@ export class OnlineGameManager {
             }
             this.playerData.delete(playerId);
         });
+
+        networkClient.on('countdownUpdate', (data: { count: number }) => {
+            this.handleCountdownUpdate(data.count);
+        });
     }
 
     private handleGameStarted(data: any): void {
@@ -224,6 +228,12 @@ export class OnlineGameManager {
 
     public setLocalPlayerId(playerId: string): void {
         this.localPlayerId = playerId;
+    }
+
+    private handleCountdownUpdate(count: number): void {
+        console.log(`[OnlineGameManager] Countdown: ${count}`);
+        // The countdown is handled by the UI manager, we could update the game state here if needed
+        // For now, we'll let the UI handle the visual countdown
     }
 
     private notifyStateChange(): void {

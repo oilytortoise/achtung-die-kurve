@@ -27,7 +27,7 @@ export interface PlayerScore {
 export interface GameState {
     currentRound: number;
     scores: PlayerScore[];
-    gamePhase: 'setup' | 'lobby' | 'playing' | 'roundOver' | 'gameOver';
+    gamePhase: 'setup' | 'lobby' | 'playing' | 'roundOver' | 'gameOver' | 'waitingForNextRound' | 'countdown';
     gameMode?: 'local' | 'online';
 }
 

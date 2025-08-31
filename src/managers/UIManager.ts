@@ -16,6 +16,7 @@ export class UIManager {
         this.lobbyManager = new LobbyManager();
         this.setupEventListeners();
         this.setupOnlineEventListeners();
+        this.setupKeyboardShortcuts();
         this.showMainMenu();
         
         // Check if there's a lobby code in URL
@@ -45,6 +46,10 @@ export class UIManager {
         // Play again button
         const playAgainBtn = document.getElementById('play-again');
         playAgainBtn?.addEventListener('click', () => this.playAgain());
+        
+        // Start next round button
+        const startNextRoundBtn = document.getElementById('start-next-round-btn');
+        startNextRoundBtn?.addEventListener('click', () => this.startNextRound());
     }
 
     private addDefaultPlayer(): void {
@@ -140,15 +145,28 @@ export class UIManager {
     }
 
     public updateGameState(state: GameState): void {
+        console.log(`[UIManager] Game state update: ${state.gamePhase}`);
         switch (state.gamePhase) {
             case 'playing':
                 this.updateHUD(state);
+                this.hideStartNextRoundButton();
                 break;
             case 'roundOver':
+            case 'waitingForNextRound':
                 this.updateHUD(state);
+                if (state.gameMode === 'online') {
+                    this.showStartNextRoundButton();
+                }
                 break;
             case 'gameOver':
                 this.showGameOver(state);
+                this.hideStartNextRoundButton();
+                break;
+            case 'countdown':
+                this.updateHUD(state);
+                this.hideStartNextRoundButton();
+                // Handle countdown display
+                this.showCountdown();
                 break;
         }
     }
@@ -611,6 +629,70 @@ export class UIManager {
     
     public getLobbyManager(): LobbyManager {
         return this.lobbyManager;
+    }
+
+    private startNextRound(): void {
+        if (this.gameMode === 'online' && this.lobbyManager.isHost()) {
+            this.lobbyManager.startNextRound();
+        }
+    }
+
+    private showStartNextRoundButton(): void {
+        const btn = document.getElementById('start-next-round-btn');
+        if (btn && this.gameMode === 'online' && this.lobbyManager.isHost()) {
+            btn.classList.remove('hidden');
+        }
+    }
+
+    private hideStartNextRoundButton(): void {
+        const btn = document.getElementById('start-next-round-btn');
+        if (btn) {
+            btn.classList.add('hidden');
+        }
+    }
+
+    private showCountdown(): void {
+        const roundInfo = document.getElementById('round-info');
+        if (roundInfo) {
+            roundInfo.textContent = 'Get Ready!';
+        }
+    }
+
+    public updateCountdown(count: number): void {
+        const roundInfo = document.getElementById('round-info');
+        if (roundInfo) {
+            roundInfo.textContent = count > 0 ? count.toString() : 'GO!';
+        }
+    }
+
+    private setupKeyboardShortcuts(): void {
+        // Global keyboard shortcuts
+        document.addEventListener('keydown', (event) => {
+            console.log(`Key pressed: ${event.code}, Can start next round: ${this.canHostStartNextRound()}`);
+            
+            // Space bar to start next round (only for online host during round end)
+            if (event.code === 'Space' && this.canHostStartNextRound()) {
+                console.log('Space bar pressed - starting next round');
+                event.preventDefault(); // Prevent page scroll
+                this.startNextRound();
+            }
+        });
+    }
+
+    private canHostStartNextRound(): boolean {
+        // Check if conditions are right for host to start next round
+        const isOnline = this.gameMode === 'online';
+        const isHost = this.lobbyManager.isHost();
+        const buttonVisible = this.isStartNextRoundButtonVisible();
+        
+        console.log(`Debug - canHostStartNextRound: gameMode=${this.gameMode}, isHost=${isHost}, buttonVisible=${buttonVisible}`);
+        
+        return isOnline && isHost && buttonVisible;
+    }
+
+    private isStartNextRoundButtonVisible(): boolean {
+        const btn = document.getElementById('start-next-round-btn');
+        return btn && !btn.classList.contains('hidden');
     }
 
     public cleanup(): void {

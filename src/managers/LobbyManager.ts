@@ -158,6 +158,12 @@ export class LobbyManager {
         }
     }
 
+    public startNextRound(): void {
+        if (this.localPlayer?.isHost) {
+            networkClient.startNextRound();
+        }
+    }
+
     public leaveLobby(): void {
         this.disconnect();
     }

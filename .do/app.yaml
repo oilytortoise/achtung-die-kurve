@@ -42,11 +42,8 @@ services:
       - path: /
     environment_slug: node-js
     build_command: |
-      node --version
-      npm --version
-      rm -rf node_modules package-lock.json
-      npm install
-      npm run build
+      chmod +x scripts/build-production.sh
+      ./scripts/build-production.sh
     envs:
       - key: NODE_ENV
         value: production

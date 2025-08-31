@@ -14,20 +14,17 @@ ENV NODE_OPTIONS="--max-old-space-size=8192"
 # Copy package files for the client
 COPY package*.json ./
 
-# Clean install with fresh dependencies
-RUN npm install --verbose
-
-# Copy source code
+# Copy source code first
 COPY . .
 
 # Remove server directory to avoid conflicts
 RUN rm -rf server/
 
-# Show versions for debugging
-RUN node --version && npm --version
+# Make build script executable
+RUN chmod +x scripts/build-production.sh
 
-# Build the application
-RUN npm run build
+# Run the robust build script
+RUN ./scripts/build-production.sh
 
 # Production stage - serve static files
 FROM nginx:alpine

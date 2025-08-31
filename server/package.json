@@ -18,5 +18,9 @@
   },
   "keywords": ["websocket", "multiplayer", "game-server", "achtung-die-kurve"],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "engines": {
+    "node": ">=24.2.0",
+    "npm": ">=10.0.0"
+  }
 }

@@ -42,7 +42,10 @@ services:
       - path: /
     environment_slug: node-js
     build_command: |
-      npm ci --only=production=false
+      node --version
+      npm --version
+      rm -rf node_modules package-lock.json
+      npm install
       npm run build
     envs:
       - key: NODE_ENV
@@ -50,4 +53,6 @@ services:
       - key: VITE_WEBSOCKET_URL
         value: ${websocket-server.PUBLIC_URL}
       - key: NODE_OPTIONS
-        value: "--max-old-space-size=4096"
+        value: "--max-old-space-size=8192"
+      - key: NODE_VERSION
+        value: "24.2.0"

@@ -1,24 +1,30 @@
 # Multi-stage build for the client
-FROM node:18-alpine AS build
+FROM node:24.2.0-alpine AS build
 
 # Set working directory
 WORKDIR /app
 
+# Install system dependencies for native modules
+RUN apk add --no-cache python3 make g++
+
 # Set Node.js environment
 ENV NODE_ENV=production
-ENV NODE_OPTIONS="--max-old-space-size=4096"
+ENV NODE_OPTIONS="--max-old-space-size=8192"
 
 # Copy package files for the client
 COPY package*.json ./
 
-# Clean install with all dependencies (including dev for build)
-RUN npm ci --include=dev
+# Clean install with fresh dependencies
+RUN npm install --verbose
 
 # Copy source code
 COPY . .
 
 # Remove server directory to avoid conflicts
 RUN rm -rf server/
+
+# Show versions for debugging
+RUN node --version && npm --version
 
 # Build the application
 RUN npm run build

@@ -16,15 +16,15 @@
   "author": "",
   "license": "MIT",
   "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=8.0.0"
+    "node": ">=24.2.0",
+    "npm": ">=10.0.0"
   },
   "dependencies": {
     "phaser": "^3.80.1",
     "socket.io-client": "^4.7.5"
   },
   "devDependencies": {
-    "@types/node": "^20.14.10",
+    "@types/node": "^22.0.0",
     "typescript": "^5.5.3",
     "vite": "^5.3.3"
   }

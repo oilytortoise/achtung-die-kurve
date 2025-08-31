@@ -8,6 +8,10 @@ WORKDIR /app
 ENV NODE_ENV=development
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 
+# Accept build arguments for environment variables
+ARG VITE_WEBSOCKET_URL
+ENV VITE_WEBSOCKET_URL=$VITE_WEBSOCKET_URL
+
 # Copy package files and install ALL dependencies (including dev)
 COPY package*.json ./
 RUN npm install
@@ -34,8 +38,28 @@ COPY --from=build /app/dist /usr/share/nginx/html
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
+# Copy the config injection script
+COPY scripts/inject-config.sh /docker-entrypoint.d/
+RUN chmod +x /docker-entrypoint.d/inject-config.sh
+
 # The nginx user already exists in nginx:alpine, so we don't need to create it
 
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+# Create a custom entrypoint that injects config and starts nginx
+RUN echo '#!/bin/bash' > /entrypoint.sh && \
+    echo 'set -e' >> /entrypoint.sh && \
+    echo '' >> /entrypoint.sh && \
+    echo '# Inject runtime configuration' >> /entrypoint.sh && \
+    echo 'if [ -n "$VITE_WEBSOCKET_URL" ]; then' >> /entrypoint.sh && \
+    echo '  echo "Injecting WEBSOCKET_URL: $VITE_WEBSOCKET_URL"' >> /entrypoint.sh && \
+    echo '  sed -i "s|__VITE_WEBSOCKET_URL__|$VITE_WEBSOCKET_URL|g" /usr/share/nginx/html/config.js' >> /entrypoint.sh && \
+    echo 'else' >> /entrypoint.sh && \
+    echo '  echo "Warning: VITE_WEBSOCKET_URL not set"' >> /entrypoint.sh && \
+    echo 'fi' >> /entrypoint.sh && \
+    echo '' >> /entrypoint.sh && \
+    echo '# Start nginx' >> /entrypoint.sh && \
+    echo 'exec nginx -g "daemon off;"' >> /entrypoint.sh && \
+    chmod +x /entrypoint.sh
+
+CMD ["/entrypoint.sh"]

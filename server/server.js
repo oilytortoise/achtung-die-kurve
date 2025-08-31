@@ -214,21 +214,29 @@ class Lobby {
 
             // Check collision with all players' trails
             for (const otherPlayer of this.players.values()) {
-                let shouldCheckCollision = true;
-                let startIndex = 0;
-
                 // For self-collision, skip recent trail points
                 if (player.id === otherPlayer.id) {
+                    // Only check self-collision if we have enough trail points
                     if (otherPlayer.trailPoints.length < 30) {
-                        shouldCheckCollision = false;
-                    } else {
-                        startIndex = otherPlayer.trailPoints.length - 20;
+                        continue; // Skip self-collision check entirely
                     }
-                }
-
-                if (shouldCheckCollision) {
-                    for (let i = startIndex; i < otherPlayer.trailPoints.length; i++) {
+                    
+                    // Check against trail points that are far enough away (exclude recent 20 points)
+                    for (let i = 0; i < otherPlayer.trailPoints.length - 20; i++) {
                         const trailPoint = otherPlayer.trailPoints[i];
+                        const distance = Math.sqrt(
+                            Math.pow(player.position.x - trailPoint.x, 2) + 
+                            Math.pow(player.position.y - trailPoint.y, 2)
+                        );
+
+                        if (distance < collisionRadius) {
+                            player.alive = false;
+                            break;
+                        }
+                    }
+                } else {
+                    // Check collision with other player's entire trail
+                    for (const trailPoint of otherPlayer.trailPoints) {
                         const distance = Math.sqrt(
                             Math.pow(player.position.x - trailPoint.x, 2) + 
                             Math.pow(player.position.y - trailPoint.y, 2)

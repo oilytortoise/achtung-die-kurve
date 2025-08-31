@@ -1,38 +1,3 @@
-#!/bin/bash
-
-# Ultra-reliable build script that completely avoids ALL Vite CLI components
-# Uses only programmatic APIs and zero CLI dependencies
-
-set -e  # Exit on any error
-
-echo "🚀 Starting CLI-free production build..."
-
-# Show environment info
-echo "Node.js: $(node --version)"
-echo "npm: $(npm --version)"
-echo "pwd: $(pwd)"
-
-# Aggressive cleanup of ALL potential conflict sources
-echo "🧹 Deep cleaning build environment..."
-rm -rf dist/ build/ .vite/ .cache/ || true
-rm -rf node_modules/.vite/ node_modules/.cache/ || true
-rm -rf node_modules/vite/dist/node/chunks/ || true  # Remove problematic chunks
-find . -name "*.tsbuildinfo" -delete || true
-
-# Minimal dependency install
-echo "📦 Installing dependencies..."
-npm cache clean --force || true
-npm install --silent
-
-# Set Node.js options for maximum compatibility
-export NODE_OPTIONS="--max-old-space-size=8192 --no-warnings"
-export NODE_ENV="production"
-export VITE_NODE_ENV="production"
-
-echo "🔨 Creating zero-CLI build process..."
-
-# Create a completely self-contained build that doesn't touch CLI
-cat > zero-cli-build.mjs << 'EOF'
 #!/usr/bin/env node
 
 // Zero-CLI Vite build - completely bypasses all CLI infrastructure
@@ -112,23 +77,3 @@ try {
   console.error('Stack trace:', error.stack);
   process.exit(1);
 }
-EOF
-
-echo "🚀 Executing zero-CLI build..."
-node zero-cli-build.mjs
-
-# Final verification and cleanup
-echo "🔍 Final verification..."
-if [ -f "dist/index.html" ] && [ -d "dist/assets" ]; then
-    echo "✅ Build successful - all artifacts present"
-    echo "📁 Build contents:"
-    ls -la dist/ || echo "Could not list dist contents"
-    
-    # Clean up
-    rm -f zero-cli-build.mjs
-    echo "🎉 CLI-free production build completed!"
-else
-    echo "❌ Build verification failed"
-    ls -la . || echo "Could not list current directory"
-    exit 1
-fi

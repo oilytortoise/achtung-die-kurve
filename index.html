@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Achtung die Kurve</title>
+    <link rel="stylesheet" href="src/styles/main.css">
+</head>
+<body>
+    <div id="game-container">
+        <div id="ui-overlay">
+            <div id="start-screen" class="screen">
+                <h1>Achtung die Kurve</h1>
+                <div id="player-setup">
+                    <h2>Players</h2>
+                    <div id="player-list"></div>
+                    <button id="add-player">Add Player</button>
+                </div>
+                <button id="start-game" disabled>Start Game</button>
+            </div>
+            
+            <div id="game-hud" class="screen hidden">
+                <div id="scores"></div>
+                <div id="round-info"></div>
+            </div>
+            
+            <div id="game-over" class="screen hidden">
+                <h2>Game Over</h2>
+                <div id="final-scores"></div>
+                <button id="play-again">Play Again</button>
+            </div>
+        </div>
+        <div id="game-canvas"></div>
+    </div>
+    
+    <script type="module" src="src/main.ts"></script>
+</body>
+</html>

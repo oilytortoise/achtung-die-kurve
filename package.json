@@ -1,0 +1,24 @@
+{
+  "name": "achtung-die-kurve",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "A modern recreation of the classic Achtung die Kurve game",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": ["game", "phaser", "typescript", "achtung-die-kurve", "curve-fever"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "phaser": "^3.80.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "typescript": "^5.5.3",
+    "vite": "^5.3.3"
+  }
+}

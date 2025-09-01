@@ -1,44 +1,22 @@
 name: achtung-die-kurve
 region: syd
 
-# Static site hosting for client (FREE)
-static_sites:
-  - name: client
+# Combined server that serves both static files and WebSocket
+services:
+  - name: app-server
     github:
       repo: oilytortoise/achtung-die-kurve
       branch: main
       deploy_on_push: true
     source_dir: /
-    build_command: npm ci && npm run build
-    output_dir: /dist
-    index_document: index.html
-    error_document: index.html
-    routes:
-      - path: /
-    environment_slug: node-js
-    envs:
-      - key: NODE_ENV
-        value: production
-      - key: VITE_WEBSOCKET_URL
-        value: "wss://achtung-api.jackstevens.tech"
-
-# WebSocket server (PAID - but only $12/month for basic-xxs)
-services:
-  - name: websocket-server
-    github:
-      repo: oilytortoise/achtung-die-kurve
-      branch: main
-      deploy_on_push: true
-    source_dir: /server
-    build_command: npm install
-    run_command: npm start
+    build_command: npm ci && npm run build && cd server && npm install
+    run_command: cd server && npm start
     environment_slug: node-js
     instance_count: 1
     instance_size_slug: basic-xxs
     http_port: 8080
     routes:
-      - path: /socket.io
-      - path: /health
+      - path: /
     health_check:
       http_path: /health
     envs:
@@ -46,5 +24,7 @@ services:
         value: production
       - key: PORT
         value: "8080"
+      - key: VITE_WEBSOCKET_URL
+        value: "wss://achtung-die-kurve-o4449.ondigitalocean.app"
       - key: CORS_ORIGIN
-        value: "https://achtung.jackstevens.tech"
+        value: "https://achtung-die-kurve-o4449.ondigitalocean.app"

@@ -1,6 +1,51 @@
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { nanoid } from 'nanoid';
+import { readFileSync, existsSync } from 'fs';
+import { join, dirname, extname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Serve static files function
+function serveStaticFile(filePath, res) {
+    try {
+        const content = readFileSync(filePath);
+        const ext = extname(filePath);
+        let contentType = 'text/html';
+        
+        switch (ext) {
+            case '.js':
+                contentType = 'application/javascript';
+                break;
+            case '.css':
+                contentType = 'text/css';
+                break;
+            case '.json':
+                contentType = 'application/json';
+                break;
+            case '.png':
+                contentType = 'image/png';
+                break;
+            case '.jpg':
+            case '.jpeg':
+                contentType = 'image/jpeg';
+                break;
+            case '.svg':
+                contentType = 'image/svg+xml';
+                break;
+            case '.ico':
+                contentType = 'image/x-icon';
+                break;
+        }
+        
+        res.writeHead(200, { 'Content-Type': contentType });
+        res.end(content);
+        return true;
+    } catch (error) {
+        return false;
+    }
+}
 
 // Create HTTP server with basic request handling
 const httpServer = createServer((req, res) => {
@@ -19,8 +64,8 @@ const httpServer = createServer((req, res) => {
         return;
     }
     
-    // Basic health check endpoint
-    if (req.url === '/' || req.url === '/health') {
+    // Health check endpoint
+    if (req.url === '/health') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ 
             status: 'ok', 
@@ -32,16 +77,37 @@ const httpServer = createServer((req, res) => {
         return;
     }
     
-    // Handle socket.io.js request for debugging
-    if (req.url.includes('/socket.io/socket.io.js')) {
-        res.writeHead(404, { 'Content-Type': 'text/plain' });
-        res.end('Socket.IO client files are served automatically by the Socket.IO server');
+    // Socket.IO routes are handled automatically by Socket.IO server
+    if (req.url.startsWith('/socket.io/')) {
+        return; // Let Socket.IO handle this
+    }
+    
+    // Serve static files from dist directory
+    const distPath = join(__dirname, '..', 'dist');
+    let filePath;
+    
+    if (req.url === '/') {
+        filePath = join(distPath, 'index.html');
+    } else {
+        filePath = join(distPath, req.url.replace(/\?.*$/, '')); // Remove query params
+    }
+    
+    // Try to serve the requested file
+    if (existsSync(filePath) && serveStaticFile(filePath, res)) {
         return;
     }
     
-    // Default response for other requests
+    // If file not found and not an API route, serve index.html for SPA routing
+    if (!req.url.startsWith('/api/')) {
+        const indexPath = join(distPath, 'index.html');
+        if (existsSync(indexPath) && serveStaticFile(indexPath, res)) {
+            return;
+        }
+    }
+    
+    // Default 404 response
     res.writeHead(404, { 'Content-Type': 'text/plain' });
-    res.end('WebSocket server running. Connect via Socket.IO client.');
+    res.end('Not Found');
 });
 
 const io = new Server(httpServer, {

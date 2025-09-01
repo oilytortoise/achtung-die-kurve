@@ -25,7 +25,9 @@ export class TouchControlManager {
     }
     
     public enable(): void {
-        if (!shouldShowTouchControls()) return;
+        if (!shouldShowTouchControls()) {
+            return;
+        }
         
         this.isEnabled = true;
         this.createTouchUI();
@@ -63,19 +65,22 @@ export class TouchControlManager {
     
     private updateTouchZones(): void {
         const dimensions = getTouchZoneDimensions();
-        const containerRect = this.gameContainer.getBoundingClientRect();
         
-        // Position touch zones at bottom corners of game area
+        // Position touch zones at bottom of viewport for easy thumb access
+        const viewportHeight = window.innerHeight;
+        const viewportWidth = window.innerWidth;
+        const yPosition = viewportHeight - dimensions.height - dimensions.padding;
+        
         this.touchZones = {
             left: {
                 x: dimensions.padding,
-                y: containerRect.height - dimensions.height - dimensions.padding,
+                y: yPosition,
                 width: dimensions.width,
                 height: dimensions.height
             },
             right: {
-                x: containerRect.width - dimensions.width - dimensions.padding,
-                y: containerRect.height - dimensions.height - dimensions.padding,
+                x: viewportWidth - dimensions.width - dimensions.padding,
+                y: yPosition,
                 width: dimensions.width,
                 height: dimensions.height
             }
@@ -83,11 +88,11 @@ export class TouchControlManager {
     }
     
     private setupEventListeners(): void {
-        // Touch events
-        this.gameContainer.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: false });
-        this.gameContainer.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false });
-        this.gameContainer.addEventListener('touchend', this.handleTouchEnd.bind(this), { passive: false });
-        this.gameContainer.addEventListener('touchcancel', this.handleTouchCancel.bind(this), { passive: false });
+        // Touch events - listen on document since controls are viewport-positioned
+        document.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: false });
+        document.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false });
+        document.addEventListener('touchend', this.handleTouchEnd.bind(this), { passive: false });
+        document.addEventListener('touchcancel', this.handleTouchCancel.bind(this), { passive: false });
         
         // Prevent default touch behaviors that might interfere with gameplay
         this.gameContainer.addEventListener('gesturestart', this.preventDefault.bind(this), { passive: false });
@@ -124,9 +129,9 @@ export class TouchControlManager {
         
         for (let i = 0; i < event.changedTouches.length; i++) {
             const touch = event.changedTouches[i];
-            const rect = this.gameContainer.getBoundingClientRect();
-            const x = touch.clientX - rect.left;
-            const y = touch.clientY - rect.top;
+            // Use viewport coordinates since touch zones are positioned relative to viewport
+            const x = touch.clientX;
+            const y = touch.clientY;
             
             // Check if touch is in left zone
             if (this.isPointInZone(x, y, this.touchZones.left) && this.touchData.leftTouchId === null) {
@@ -193,20 +198,29 @@ export class TouchControlManager {
     }
     
     private createTouchUI(): void {
-        if (this.container || !this.touchZones) return;
+        if (this.container) {
+            return;
+        }
         
-        // Create container for touch controls
+        if (!this.touchZones) {
+            return;
+        }
+        
+        // Create container for touch controls - fixed to viewport
         this.container = document.createElement('div');
         this.container.className = 'touch-controls-overlay';
         this.container.style.cssText = `
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: 100vw;
+            height: 100vh;
             pointer-events: none;
-            z-index: 100;
+            z-index: 1000;
         `;
+        
+        // Append to body instead of game container for viewport positioning
+        document.body.appendChild(this.container);
         
         // Create left button
         this.leftButton = document.createElement('div');
@@ -262,7 +276,6 @@ export class TouchControlManager {
         
         this.container.appendChild(this.leftButton);
         this.container.appendChild(this.rightButton);
-        this.gameContainer.appendChild(this.container);
     }
     
     private updateTouchUI(): void {

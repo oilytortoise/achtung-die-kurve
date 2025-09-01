@@ -36,7 +36,15 @@ export function isTablet(): boolean {
  * Determine if touch controls should be shown for online games
  */
 export function shouldShowTouchControls(): boolean {
-    return isMobileDevice() || isTouchDevice();
+    const hasMobile = isMobileDevice();
+    const hasTouch = isTouchDevice();
+    
+    // Check for debug mode to force touch controls
+    const forceTouch = (window as any).FORCE_TOUCH_CONTROLS || 
+                      localStorage.getItem('debug-touch-controls') === 'true' ||
+                      new URLSearchParams(window.location.search).has('touch');
+    
+    return hasMobile || hasTouch || forceTouch;
 }
 
 /**

@@ -93,10 +93,6 @@ export class OnlineGameManager {
     }
 
     private handleServerGameStateUpdate(networkState: NetworkGameState): void {
-        console.log('[OnlineGameManager] Received game state update from server');
-        console.log('[OnlineGameManager] Server phase:', networkState.gameState.phase);
-        console.log('[OnlineGameManager] Full network state:', networkState);
-        
         // Add to interpolation buffer
         this.interpolationBuffer.push(networkState);
         if (this.interpolationBuffer.length > this.maxBufferSize) {
@@ -111,8 +107,12 @@ export class OnlineGameManager {
             gameMode: 'online' as const
         };
         
-        console.log('[OnlineGameManager] Setting new local state:', newState);
         this.state = newState;
+
+        // Enable touch controls when entering playing phase
+        if (newState.gamePhase === 'playing') {
+            this.enableTouchControls();
+        }
 
         // Update player data and visual entities
         networkState.players.forEach(playerData => {
@@ -191,17 +191,26 @@ export class OnlineGameManager {
 
     private setupTouchControls(): void {
         // Only setup touch controls if device supports touch
-        if (!shouldShowTouchControls()) return;
+        if (!shouldShowTouchControls()) {
+            return;
+        }
         
-        // Get the game container element (canvas parent)
-        const gameContainer = this.scene.game.canvas.parentElement;
+        // Get the game container element (try multiple approaches)
+        let gameContainer = this.scene.game.canvas.parentElement;
+        
+        // If canvas parent doesn't exist, try to find a suitable container
         if (!gameContainer) {
-            console.warn('Could not find game container for touch controls');
+            // Try common container IDs
+            gameContainer = document.getElementById('game-container') || 
+                          document.getElementById('phaser-game') ||
+                          document.body; // Fallback to body
+        }
+        
+        if (!gameContainer) {
             return;
         }
         
         this.touchControlManager = new TouchControlManager(gameContainer);
-        console.log('[OnlineGameManager] Touch controls initialized');
     }
     
     private enableTouchControls(): void {

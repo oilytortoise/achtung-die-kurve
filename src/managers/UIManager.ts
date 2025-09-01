@@ -221,6 +221,19 @@ export class UIManager {
     }
 
     private showGameOver(state: GameState): void {
+        // For online games, redirect back to lobby instead of showing game over screen
+        if (state.gameMode === 'online' && this.lobbyManager.getCurrentLobby()) {
+            console.log('[UIManager] Online game ended - redirecting to lobby');
+            
+            // Reset all players to not ready state
+            this.isPlayerReady = false;
+            
+            // Show a brief game over message before redirecting
+            this.showGameOverMessageThenRedirect(state);
+            return;
+        }
+        
+        // For local games, show the normal game over screen
         this.showScreen('game-over');
         
         const finalScoresDiv = document.getElementById('final-scores');
@@ -264,6 +277,78 @@ export class UIManager {
                 })
                 .join('');
         }
+    }
+
+    private showGameOverMessageThenRedirect(state: GameState): void {
+        // Create a temporary overlay to show game over results
+        const gameOverOverlay = document.createElement('div');
+        gameOverOverlay.className = 'game-over-overlay';
+        gameOverOverlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-family: Arial, sans-serif;
+            z-index: 1000;
+        `;
+
+        // Get winner information
+        const sortedScores = [...state.scores].sort((a, b) => b.rounds - a.rounds);
+        const winner = sortedScores[0];
+        const winnerPlayer = this.onlinePlayers.get(winner.playerId);
+
+        gameOverOverlay.innerHTML = `
+            <h2 style="font-size: 3rem; margin-bottom: 2rem; text-align: center;">Game Over!</h2>
+            ${winnerPlayer ? `
+                <div style="font-size: 2rem; margin-bottom: 1rem; text-align: center;">
+                    <span style="color: ${winnerPlayer.color}">${winnerPlayer.name}</span> wins! 🏆
+                </div>
+            ` : ''}
+            <div style="margin-bottom: 2rem;">
+                ${sortedScores.map(score => {
+                    const player = this.onlinePlayers.get(score.playerId);
+                    if (!player) return '';
+                    const isWinner = score.playerId === winner.playerId;
+                    return `
+                        <div style="margin: 0.5rem 0; font-size: 1.5rem; ${isWinner ? 'font-weight: bold;' : ''}">
+                            <span style="color: ${player.color}">${player.name}</span>: ${score.rounds} rounds
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+            <div style="font-size: 1.5rem; text-align: center; margin-top: 2rem;">
+                Returning to lobby in <span id="redirect-countdown">3</span> seconds...
+            </div>
+        `;
+
+        document.body.appendChild(gameOverOverlay);
+
+        // Countdown and redirect
+        let countdown = 3;
+        const countdownElement = document.getElementById('redirect-countdown');
+        
+        const countdownInterval = setInterval(() => {
+            countdown--;
+            if (countdownElement) {
+                countdownElement.textContent = countdown.toString();
+            }
+            
+            if (countdown <= 0) {
+                clearInterval(countdownInterval);
+                document.body.removeChild(gameOverOverlay);
+                
+                // Reset ready state and redirect to lobby
+                this.lobbyManager.setReady(false);
+                this.showLobbyScreen();
+            }
+        }, 1000);
     }
 
     private showScreen(screenId: string): void {

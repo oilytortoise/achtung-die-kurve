@@ -109,9 +109,12 @@ export class OnlineGameManager {
         
         this.state = newState;
 
-        // Enable touch controls when entering playing phase
+        // Enable/disable touch controls based on game phase
         if (newState.gamePhase === 'playing') {
             this.enableTouchControls();
+        } else if (this.state.gamePhase === 'playing' && newState.gamePhase !== 'playing') {
+            // Disable touch controls when leaving playing phase
+            this.disableTouchControls();
         }
 
         // Update player data and visual entities

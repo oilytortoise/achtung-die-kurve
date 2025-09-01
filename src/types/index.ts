@@ -46,8 +46,8 @@ export interface OnlinePlayer {
     color: string;
     isReady: boolean;
     isHost: boolean;
-    leftKey?: string;
-    rightKey?: string;
+    leftKey?: string; // Optional - all online players use arrow keys by default
+    rightKey?: string; // Optional - all online players use arrow keys by default
     position?: { x: number; y: number };
     rotation?: number;
     alive?: boolean;

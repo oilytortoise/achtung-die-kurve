@@ -86,6 +86,10 @@ export class OnlineGameManager {
     }
 
     private handleServerGameStateUpdate(networkState: NetworkGameState): void {
+        console.log('[OnlineGameManager] Received game state update from server');
+        console.log('[OnlineGameManager] Server phase:', networkState.gameState.phase);
+        console.log('[OnlineGameManager] Full network state:', networkState);
+        
         // Add to interpolation buffer
         this.interpolationBuffer.push(networkState);
         if (this.interpolationBuffer.length > this.maxBufferSize) {
@@ -93,12 +97,15 @@ export class OnlineGameManager {
         }
 
         // Update game state
-        this.state = {
+        const newState = {
             currentRound: networkState.gameState.currentRound,
             scores: networkState.gameState.scores,
             gamePhase: networkState.gameState.phase as any,
-            gameMode: 'online'
+            gameMode: 'online' as const
         };
+        
+        console.log('[OnlineGameManager] Setting new local state:', newState);
+        this.state = newState;
 
         // Update player data and visual entities
         networkState.players.forEach(playerData => {
@@ -143,16 +150,17 @@ export class OnlineGameManager {
         if (this.keyListenersSetup) return;
         
         const localPlayerData = this.playerData.get(this.localPlayerId!);
-        if (!localPlayerData || !localPlayerData.leftKey || !localPlayerData.rightKey) {
+        if (!localPlayerData) {
             return;
         }
 
-        const leftKey = localPlayerData.leftKey;
-        const rightKey = localPlayerData.rightKey;
+        // Use fixed arrow keys for all online players
+        const leftKey = 'ArrowLeft';
+        const rightKey = 'ArrowRight';
 
         console.log(`Setting up keyboard listeners for ${localPlayerData.name}: ${leftKey} (left) / ${rightKey} (right)`);
 
-        // Set up keyboard input listeners (similar to local Player.ts)
+        // Set up keyboard input listeners using fixed arrow keys
         this.scene.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
             if (event.code === leftKey) {
                 this.leftPressed = true;
@@ -237,8 +245,14 @@ export class OnlineGameManager {
     }
 
     private notifyStateChange(): void {
+        console.log('[OnlineGameManager] Notifying state change');
+        console.log('[OnlineGameManager] Current state:', this.state);
+        
         if (this.onGameStateChange) {
+            console.log('[OnlineGameManager] Calling onGameStateChange callback');
             this.onGameStateChange(this.getGameState());
+        } else {
+            console.log('[OnlineGameManager] No onGameStateChange callback set!');
         }
     }
 

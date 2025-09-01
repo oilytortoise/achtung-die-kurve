@@ -164,6 +164,19 @@ export class LobbyManager {
         }
     }
 
+    public returnToLobby(): void {
+        console.log('[LobbyManager] returnToLobby called');
+        console.log('[LobbyManager] Current player:', this.localPlayer);
+        console.log('[LobbyManager] Is host:', this.localPlayer?.isHost);
+        
+        if (this.localPlayer?.isHost) {
+            console.log('[LobbyManager] Sending returnToLobby to server');
+            networkClient.returnToLobby();
+        } else {
+            console.log('[LobbyManager] Not host, will not send returnToLobby message');
+        }
+    }
+
     public leaveLobby(): void {
         this.disconnect();
     }

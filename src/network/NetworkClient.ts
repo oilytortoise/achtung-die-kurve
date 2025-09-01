@@ -262,13 +262,19 @@ export class NetworkClient {
 
     // Reliable message sending
     private sendMessage(event: string, data: any, callback?: Function): void {
+        console.log(`[NetworkClient] sendMessage called: event=${event}, data=`, data);
+        console.log(`[NetworkClient] Socket exists: ${!!this.socket}, Connected: ${this.connectionState.isConnected}`);
+        
         if (this.socket && this.connectionState.isConnected) {
+            console.log(`[NetworkClient] Sending message immediately: ${event}`);
             this.socket.emit(event, data, callback);
         } else {
+            console.log(`[NetworkClient] Queuing message (not connected): ${event}`);
             this.queueMessage(event, data, callback);
             
             // Attempt to reconnect if not connected
             if (!this.connectionState.isConnecting) {
+                console.log('[NetworkClient] Attempting auto-reconnection...');
                 this.connect().catch(error => {
                     console.error('Auto-reconnection failed:', error);
                 });
@@ -309,6 +315,15 @@ export class NetworkClient {
 
     startNextRound(): void {
         this.sendMessage('startNextRound', {});
+    }
+
+    returnToLobby(): void {
+        console.log('[NetworkClient] returnToLobby called');
+        console.log('[NetworkClient] Connection state:', this.connectionState);
+        console.log('[NetworkClient] Socket connected:', !!this.socket && this.connectionState.isConnected);
+        
+        this.sendMessage('returnToLobby', {});
+        console.log('[NetworkClient] returnToLobby message sent to server');
     }
 
     sendPlayerInput(input: PlayerInput): void {

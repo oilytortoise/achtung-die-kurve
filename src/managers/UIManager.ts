@@ -145,8 +145,20 @@ export class UIManager {
     }
 
     public updateGameState(state: GameState): void {
-        console.log(`[UIManager] Game state update: ${state.gamePhase}`);
+        console.log(`[UIManager] Game state update: ${state.gamePhase}, gameMode: ${state.gameMode}`);
+        console.log('[UIManager] Current screen:', document.querySelector('.screen:not(.hidden)')?.id || 'none');
+        
         switch (state.gamePhase) {
+            case 'lobby':
+                console.log('[UIManager] Received lobby state update');
+                // Handle returning to lobby from game over
+                if (state.gameMode === 'online') {
+                    console.log('[UIManager] Online game returned to lobby - calling handleReturnedToLobby');
+                    this.handleReturnedToLobby();
+                } else {
+                    console.log('[UIManager] Local game lobby state - ignoring');
+                }
+                break;
             case 'playing':
                 this.updateHUD(state);
                 this.hideStartNextRoundButton();
@@ -280,6 +292,15 @@ export class UIManager {
     }
 
     private showGameOverMessageThenRedirect(state: GameState): void {
+        // Prevent creating multiple overlays
+        const existingOverlay = (this as any).currentGameOverOverlay;
+        if (existingOverlay && document.body.contains(existingOverlay)) {
+            console.log('[UIManager] Game over overlay already exists, not creating duplicate');
+            return;
+        }
+        
+        console.log('[UIManager] Creating game over overlay');
+        
         // Create a temporary overlay to show game over results
         const gameOverOverlay = document.createElement('div');
         gameOverOverlay.className = 'game-over-overlay';
@@ -304,6 +325,9 @@ export class UIManager {
         const winner = sortedScores[0];
         const winnerPlayer = this.onlinePlayers.get(winner.playerId);
 
+        // Check if current player is the host
+        const isHost = this.lobbyManager.isHost();
+        
         gameOverOverlay.innerHTML = `
             <h2 style="font-size: 3rem; margin-bottom: 2rem; text-align: center;">Game Over!</h2>
             ${winnerPlayer ? `
@@ -323,32 +347,77 @@ export class UIManager {
                     `;
                 }).join('')}
             </div>
-            <div style="font-size: 1.5rem; text-align: center; margin-top: 2rem;">
-                Returning to lobby in <span id="redirect-countdown">3</span> seconds...
+            <div style="margin-top: 3rem; text-align: center;">
+                ${isHost ? `
+                    <button id="return-to-lobby-btn" style="
+                        font-size: 1.5rem;
+                        padding: 1rem 2rem;
+                        background: #4CAF50;
+                        color: white;
+                        border: none;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        transition: background-color 0.3s;
+                    " onmouseover="this.style.backgroundColor='#45a049'" onmouseout="this.style.backgroundColor='#4CAF50'">
+                        Return to Lobby
+                    </button>
+                ` : `
+                    <div style="font-size: 1.3rem; color: #ccc;">
+                        Waiting for host to return to lobby...
+                    </div>
+                `}
             </div>
         `;
 
         document.body.appendChild(gameOverOverlay);
 
-        // Countdown and redirect
-        let countdown = 3;
-        const countdownElement = document.getElementById('redirect-countdown');
-        
-        const countdownInterval = setInterval(() => {
-            countdown--;
-            if (countdownElement) {
-                countdownElement.textContent = countdown.toString();
-            }
+        // Add button click handler for hosts
+        if (isHost) {
+            const returnButton = document.getElementById('return-to-lobby-btn');
+            console.log('[UIManager] Setting up return to lobby button for host. Button found:', !!returnButton);
+            console.log('[UIManager] Button element details:', returnButton);
             
-            if (countdown <= 0) {
-                clearInterval(countdownInterval);
-                document.body.removeChild(gameOverOverlay);
+            if (returnButton) {
+                // Test that we can access the button
+                console.log('[UIManager] Button innerHTML:', returnButton.innerHTML);
+                console.log('[UIManager] Button onclick attr:', returnButton.getAttribute('onclick'));
                 
-                // Reset ready state and redirect to lobby
-                this.lobbyManager.setReady(false);
-                this.showLobbyScreen();
+                // Add click event listener
+                const clickHandler = () => {
+                    console.log('[UIManager] Host clicked Return to Lobby button!');
+                    console.log('[UIManager] Current lobby:', this.lobbyManager.getCurrentLobby());
+                    console.log('[UIManager] Is host:', this.lobbyManager.isHost());
+                    
+                    try {
+                        // Remove overlay immediately for visual feedback
+                        if (document.body.contains(gameOverOverlay)) {
+                            document.body.removeChild(gameOverOverlay);
+                        }
+                        
+                        // Tell server to return all players to lobby
+                        console.log('[UIManager] Calling returnToLobby...');
+                        this.lobbyManager.returnToLobby();
+                    } catch (error) {
+                        console.error('[UIManager] Error in button click handler:', error);
+                    }
+                };
+                
+                returnButton.addEventListener('click', clickHandler);
+                console.log('[UIManager] Event listener attached successfully');
+                
+                // Test the button by adding a visual indicator
+                returnButton.style.border = '2px solid red';
+                console.log('[UIManager] Added red border to button for testing');
+                
+            } else {
+                console.error('[UIManager] Return to lobby button not found!');
             }
-        }, 1000);
+        } else {
+            console.log('[UIManager] Current user is not host, will not set up return button');
+        }
+        
+        // Store reference to overlay so it can be cleaned up if needed
+        (this as any).currentGameOverOverlay = gameOverOverlay;
     }
 
     private showScreen(screenId: string): void {
@@ -552,16 +621,13 @@ export class UIManager {
                 const statusClass = player.isHost ? 'host' : (player.isReady ? 'ready' : '');
                 const itemClass = `lobby-player-item ${statusClass}`;
                 
-                // Show key bindings if available
-                const keyBindingsText = player.leftKey && player.rightKey ? 
-                    `${this.getKeyDisplayName(player.leftKey)} / ${this.getKeyDisplayName(player.rightKey)}` : '';
-                
+                // For online multiplayer, all players use the same controls (arrow keys)
+                // so we don't need to display key bindings
                 return `
                     <div class="${itemClass}">
                         <div class="lobby-player-info">
                             <div class="player-color" style="background-color: ${player.color};"></div>
                             <span>${player.name}</span>
-                            ${keyBindingsText ? `<span class="player-controls" style="margin-left: 10px; font-size: 0.8rem; color: #ccc;">(${keyBindingsText})</span>` : ''}
                         </div>
                         <span class="lobby-player-status ${statusClass}">${statusText}</span>
                     </div>
@@ -635,6 +701,23 @@ export class UIManager {
         if (this.onStartOnlineGame) {
             this.onStartOnlineGame();
         }
+    }
+
+    private handleReturnedToLobby(): void {
+        console.log('[UIManager] Returned to lobby - cleaning up game over overlay');
+        
+        // Clean up game over overlay if it exists
+        const currentOverlay = (this as any).currentGameOverOverlay;
+        if (currentOverlay && document.body.contains(currentOverlay)) {
+            document.body.removeChild(currentOverlay);
+            (this as any).currentGameOverOverlay = null;
+        }
+        
+        // Reset player ready state
+        this.isPlayerReady = false;
+        
+        // Show lobby screen
+        this.showLobbyScreen();
     }
 
     private updateConnectionStatus(state: ConnectionState): void {
@@ -781,6 +864,13 @@ export class UIManager {
     }
 
     public cleanup(): void {
+        // Clean up any active game over overlay
+        const currentOverlay = (this as any).currentGameOverOverlay;
+        if (currentOverlay && document.body.contains(currentOverlay)) {
+            document.body.removeChild(currentOverlay);
+            (this as any).currentGameOverOverlay = null;
+        }
+        
         this.lobbyManager.cleanup();
     }
 }

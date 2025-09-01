@@ -1,6 +1,8 @@
 import type { GameConfig, GameState, PlayerInput, NetworkGameState, OnlinePlayer as OnlinePlayerData } from '../types';
 import { networkClient } from '../network/NetworkClient';
 import { OnlinePlayer } from '../entities/OnlinePlayer';
+import { TouchControlManager } from '../input/TouchControlManager';
+import { shouldShowTouchControls } from '../utils/mobile';
 
 export class OnlineGameManager {
     private state: GameState;
@@ -15,6 +17,7 @@ export class OnlineGameManager {
     private leftPressed: boolean = false;
     private rightPressed: boolean = false;
     private keyListenersSetup: boolean = false;
+    private touchControlManager: TouchControlManager | null = null;
 
     constructor(scene: Phaser.Scene, _config: GameConfig) {
         this.scene = scene;
@@ -26,6 +29,7 @@ export class OnlineGameManager {
         };
 
         this.setupNetworkListeners();
+        this.setupTouchControls();
     }
 
     public setGameStateChangeCallback(callback: (state: GameState) => void): void {
@@ -83,6 +87,9 @@ export class OnlineGameManager {
         });
 
         this.notifyStateChange();
+        
+        // Enable touch controls when game starts
+        this.enableTouchControls();
     }
 
     private handleServerGameStateUpdate(networkState: NetworkGameState): void {
@@ -182,6 +189,35 @@ export class OnlineGameManager {
         this.keyListenersSetup = true;
     }
 
+    private setupTouchControls(): void {
+        // Only setup touch controls if device supports touch
+        if (!shouldShowTouchControls()) return;
+        
+        // Get the game container element (canvas parent)
+        const gameContainer = this.scene.game.canvas.parentElement;
+        if (!gameContainer) {
+            console.warn('Could not find game container for touch controls');
+            return;
+        }
+        
+        this.touchControlManager = new TouchControlManager(gameContainer);
+        console.log('[OnlineGameManager] Touch controls initialized');
+    }
+    
+    private enableTouchControls(): void {
+        if (this.touchControlManager) {
+            this.touchControlManager.enable();
+            console.log('[OnlineGameManager] Touch controls enabled');
+        }
+    }
+    
+    private disableTouchControls(): void {
+        if (this.touchControlManager) {
+            this.touchControlManager.disable();
+            console.log('[OnlineGameManager] Touch controls disabled');
+        }
+    }
+
     private handleLocalInput(): void {
         if (!this.localPlayerId) return;
 
@@ -193,9 +229,17 @@ export class OnlineGameManager {
             this.setupKeyboardListeners();
         }
 
+        // Get touch input if available
+        let touchLeft = false;
+        let touchRight = false;
+        if (this.touchControlManager) {
+            touchLeft = this.touchControlManager.isLeftPressed();
+            touchRight = this.touchControlManager.isRightPressed();
+        }
+        
         const input: PlayerInput = {
-            left: this.leftPressed,
-            right: this.rightPressed,
+            left: this.leftPressed || touchLeft,
+            right: this.rightPressed || touchRight,
             timestamp: Date.now()
         };
 
@@ -269,6 +313,9 @@ export class OnlineGameManager {
         this.rightPressed = false;
         this.keyListenersSetup = false;
         
+        // Disable touch controls
+        this.disableTouchControls();
+        
         this.state = {
             currentRound: 1,
             scores: [],
@@ -287,6 +334,12 @@ export class OnlineGameManager {
         
         // Remove keyboard listeners
         this.scene.input.keyboard?.removeAllListeners();
+        
+        // Cleanup touch controls
+        if (this.touchControlManager) {
+            this.touchControlManager.destroy();
+            this.touchControlManager = null;
+        }
         
         this.reset();
     }

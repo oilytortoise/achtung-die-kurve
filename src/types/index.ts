@@ -84,6 +84,13 @@ export interface PlayerInput {
     timestamp?: number;
 }
 
+export interface TouchInputData {
+    leftPressed: boolean;
+    rightPressed: boolean;
+    leftTouchId: number | null;
+    rightTouchId: number | null;
+}
+
 export const DEFAULT_PLAYER_COLORS = [
     '#ff0000', // Red
     '#0000ff', // Blue

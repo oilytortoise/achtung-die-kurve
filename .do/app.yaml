@@ -1,27 +1,25 @@
 name: achtung-die-kurve
 region: nyc
 
-services:
-  # Static Site (Client) - serves main application
+# Static site hosting for client (FREE)
+static_sites:
   - name: client
     source_dir: /
     build_command: npm install && npm run build
-    run_command: npm run preview -- --host 0.0.0.0 --port $PORT
-    environment_slug: node-js
-    instance_count: 1
-    instance_size_slug: basic-xxs
-    http_port: 8080
+    output_dir: /dist
+    index_document: index.html
+    error_document: index.html
     routes:
       - path: /
+    environment_slug: node-js
     envs:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: "8080"
       - key: VITE_WEBSOCKET_URL
-        value: "wss://${websocket-server.PUBLIC_URL}"
+        value: "wss://achtung-api.jackstevens.tech"
 
-  # WebSocket Server - serves API and WebSocket connections
+# WebSocket server (PAID - but only $12/month for basic-xxs)
+services:
   - name: websocket-server
     source_dir: /server
     build_command: npm install
@@ -32,13 +30,10 @@ services:
     http_port: 8080
     health_check:
       http_path: /health
-    routes:
-      - path: /socket.io
-      - path: /api
     envs:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: "8080"
       - key: CORS_ORIGIN
-        value: "${client.PUBLIC_URL}"
+        value: "https://achtung.jackstevens.tech"

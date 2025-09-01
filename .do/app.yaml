@@ -1,11 +1,15 @@
 name: achtung-die-kurve
-region: nyc
+region: syd
 
 # Static site hosting for client (FREE)
 static_sites:
   - name: client
+    github:
+      repo: oilytortoise/achtung-die-kurve
+      branch: main
+      deploy_on_push: true
     source_dir: /
-    build_command: npm install && npm run build
+    build_command: npm ci && npm run build
     output_dir: /dist
     index_document: index.html
     error_document: index.html
@@ -21,6 +25,10 @@ static_sites:
 # WebSocket server (PAID - but only $12/month for basic-xxs)
 services:
   - name: websocket-server
+    github:
+      repo: oilytortoise/achtung-die-kurve
+      branch: main
+      deploy_on_push: true
     source_dir: /server
     build_command: npm install
     run_command: npm start
@@ -28,6 +36,9 @@ services:
     instance_count: 1
     instance_size_slug: basic-xxs
     http_port: 8080
+    routes:
+      - path: /socket.io
+      - path: /health
     health_check:
       http_path: /health
     envs:

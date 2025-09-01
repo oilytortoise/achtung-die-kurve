@@ -470,6 +470,60 @@ class Lobby {
         return true;
     }
 
+    canReturnToLobby() {
+        return this.gameState.phase === 'gameOver';
+    }
+
+    returnToLobby() {
+        if (!this.canReturnToLobby()) return false;
+
+        console.log(`[Server] Returning lobby ${this.id} to lobby state`);
+        
+        // Stop any running game loops
+        this.stopGameLoop();
+        
+        // Reset game state to lobby
+        this.gameState.phase = 'lobby';
+        this.gameState.currentRound = 1;
+        this.tickCount = 0;
+        
+        console.log(`[Server] Game state reset - phase: ${this.gameState.phase}`);
+        
+        // Reset scores to 0 for all players
+        for (const score of this.gameState.scores.values()) {
+            score.rounds = 0;
+        }
+        
+        // Reset all players to not ready and clear their game state
+        for (const player of this.players.values()) {
+            player.isReady = false;
+            player.alive = true;
+            player.position = { x: 0, y: 0 };
+            player.rotation = 0;
+            player.trailPoints = [];
+            player.inputs = { left: false, right: false };
+            player.gapTimer = 0;
+            player.inGap = false;
+            // Randomize gap timings for fresh start
+            this.randomizePlayerGapTimings(player);
+        }
+        
+        console.log(`[Server] Broadcasting game state update to lobby ${this.id}`);
+        console.log(`[Server] Game state being broadcast:`, {
+            phase: this.gameState.phase,
+            currentRound: this.gameState.currentRound,
+            scores: Array.from(this.gameState.scores.values())
+        });
+        
+        // Broadcast the updated lobby state
+        this.broadcastGameState();
+        io.to(this.id).emit('lobbyUpdated', this.getPublicData());
+        
+        console.log(`[Server] Broadcasts sent for lobby ${this.id}`);
+        
+        return true;
+    }
+
     broadcastCountdown(count) {
         io.to(this.id).emit('countdownUpdate', { count });
     }
@@ -700,6 +754,35 @@ io.on('connection', (socket) => {
             }
         } catch (error) {
             console.error('Error starting next round:', error);
+        }
+    });
+
+    socket.on('returnToLobby', () => {
+        console.log(`[Server] Received returnToLobby message from ${socket.id}`);
+        try {
+            for (const lobby of lobbies.values()) {
+                if (lobby.players.has(socket.id)) {
+                    const player = lobby.players.get(socket.id);
+                    console.log(`[Server] Found player in lobby ${lobby.id}: ${player.name}, isHost: ${player.isHost}`);
+                    console.log(`[Server] Lobby can return to lobby: ${lobby.canReturnToLobby()}`);
+                    console.log(`[Server] Current lobby phase: ${lobby.gameState.phase}`);
+                    
+                    // Only host can return to lobby
+                    if (player.isHost && lobby.canReturnToLobby()) {
+                        console.log(`[Server] Host ${player.name} returning lobby ${lobby.id} to lobby state`);
+                        if (lobby.returnToLobby()) {
+                            console.log(`[Server] Successfully returned lobby ${lobby.id} to lobby by host`);
+                        } else {
+                            console.log(`[Server] Failed to return lobby ${lobby.id} to lobby`);
+                        }
+                    } else {
+                        console.log(`[Server] Cannot return to lobby - isHost: ${player.isHost}, canReturn: ${lobby.canReturnToLobby()}`);
+                    }
+                    break;
+                }
+            }
+        } catch (error) {
+            console.error('Error returning to lobby:', error);
         }
     });
 

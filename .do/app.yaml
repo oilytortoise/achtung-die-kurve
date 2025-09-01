@@ -2,46 +2,43 @@ name: achtung-die-kurve
 region: nyc
 
 services:
-  # WebSocket Server
-  - name: websocket-server
-    source_dir: /
-    dockerfile_path: server/Dockerfile
-    github:
-      branch: main
-      deploy_on_push: true
-    health_check:
-      http_path: /health
-      success_codes:
-        - 200
-    http_port: 3001
-    instance_count: 1
-    instance_size_slug: basic-xxs
-    routes:
-      - path: /socket.io
-    environment_slug: node-js
-    envs:
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: "3001"
-      - key: CORS_ORIGIN
-        value: "https://achtung.jackstevens.tech"
-
-  # Static Site (Client) - Docker build only
+  # Static Site (Client) - serves main application
   - name: client
-    dockerfile_path: Dockerfile
-    github:
-      branch: main
-      deploy_on_push: true
-    health_check:
-      http_path: /health
-    http_port: 80
+    source_dir: /
+    build_command: npm install && npm run build
+    run_command: npm run preview -- --host 0.0.0.0 --port $PORT
+    environment_slug: node-js
     instance_count: 1
     instance_size_slug: basic-xxs
+    http_port: 8080
     routes:
       - path: /
     envs:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: "8080"
       - key: VITE_WEBSOCKET_URL
-        value: "wss://achtung.jackstevens.tech"
+        value: "wss://${websocket-server.PUBLIC_URL}"
+
+  # WebSocket Server - serves API and WebSocket connections
+  - name: websocket-server
+    source_dir: /server
+    build_command: npm install
+    run_command: npm start
+    environment_slug: node-js
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    http_port: 8080
+    health_check:
+      http_path: /health
+    routes:
+      - path: /socket.io
+      - path: /api
+    envs:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "8080"
+      - key: CORS_ORIGIN
+        value: "${client.PUBLIC_URL}"

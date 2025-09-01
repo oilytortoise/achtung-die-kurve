@@ -178,10 +178,12 @@ class Lobby {
             return { success: false, error: 'Lobby is full' };
         }
 
-        // Assign key bindings and color based on player index (order joined)
+        // Assign color based on player index (order joined)
         const playerIndex = this.players.size;
-        const keyBinding = DEFAULT_KEY_BINDINGS[playerIndex] || DEFAULT_KEY_BINDINGS[0];
         const assignedColor = DEFAULT_PLAYER_COLORS[playerIndex] || DEFAULT_PLAYER_COLORS[0];
+
+        // Use same controls for all online players (left and right arrow keys)
+        const onlineKeyBinding = { left: 'ArrowLeft', right: 'ArrowRight' };
 
         const player = {
             id: playerData.id || nanoid(8),
@@ -190,8 +192,8 @@ class Lobby {
             color: assignedColor, // Use server-assigned color to ensure uniqueness
             isReady: false,
             isHost: socketId === this.hostSocketId,
-            leftKey: keyBinding.left,
-            rightKey: keyBinding.right,
+            leftKey: onlineKeyBinding.left,
+            rightKey: onlineKeyBinding.right,
             position: { x: 0, y: 0 },
             rotation: 0,
             alive: true,
